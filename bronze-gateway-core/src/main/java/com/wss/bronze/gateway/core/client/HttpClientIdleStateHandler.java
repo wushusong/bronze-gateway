@@ -23,17 +23,23 @@ public class HttpClientIdleStateHandler extends IdleStateHandler {
 
     @Override
     protected void channelIdle(ChannelHandlerContext ctx, IdleStateEvent evt) throws Exception {
-        if (evt.state() == IdleState.ALL_IDLE) {
-            // 获取网关上下文
-            GatewayContext gatewayContext = ctx.channel().attr(HttpClient.GATEWAY_CONTEXT_KEY).get();
+        try {
+            if (evt.state() == IdleState.ALL_IDLE) {
+                // 获取网关上下文
+                GatewayContext gatewayContext = ctx.channel().attr(HttpClient.GATEWAY_CONTEXT_KEY).get();
 
-            if (gatewayContext != null) {
-                log.warn("Connection timeout to backend service");
-                GwUtils.sendTimeoutError(gatewayContext);
+                if (gatewayContext != null) {
+                    log.warn("Connection timeout to backend service");
+                    GwUtils.sendTimeoutError(gatewayContext);
+                }
+
+                // 关闭连接
+                ctx.close();
             }
-
-            // 关闭连接
-            ctx.close();
+        } finally {
+            // 确保其他处理器仍能收到 Idle 事件做各自清理
+            ctx.fireUserEventTriggered(evt);
+            // 或者调用：super.channelIdle(ctx, evt);
         }
     }
 
