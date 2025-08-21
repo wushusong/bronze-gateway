@@ -4,6 +4,7 @@ import com.wss.bronze.gateway.core.client.HttpClient;
 import com.wss.bronze.gateway.core.config.ApplicationContextHolder;
 import com.wss.bronze.gateway.core.config.GatewayProperties;
 import com.wss.bronze.gateway.core.filter.FilterChainFactory;
+import com.wss.bronze.gateway.core.filter.FilterException;
 import com.wss.bronze.gateway.core.loadbalancer.LoadBalancer;
 import com.wss.bronze.gateway.core.router.Router;
 import com.wss.bronze.gateway.core.utils.GwUtils;
@@ -55,14 +56,15 @@ public class GatewayServerHandler extends ChannelInboundHandlerAdapter {
         FullHttpRequest fullRequest = (FullHttpRequest) msg;
         GatewayContext context = new GatewayContext(ctx, fullRequest);
 
+        boolean forwarded = false;
         try {
-            // 1. 执行前置过滤器
-            boolean filterResult = filterChainFactory.executePreFilters(context);
-            if (!filterResult) {
+            try {
+                filterChainFactory.executePreFilters(context);
+            }catch (FilterException e){
+                GwUtils.sendResponse(ctx, e.getStatus(), e.getMessage(), true);
                 return;
             }
 
-            // 2. 路由和负载均衡
             GatewayProperties.RouteDefinition route = router.route(context);
             if (route == null) {
                 GwUtils.sendResponse(ctx, HttpResponseStatus.NOT_FOUND, "No route found", true);
@@ -75,12 +77,15 @@ public class GatewayServerHandler extends ChannelInboundHandlerAdapter {
                 return;
             }
 
-            // 3. 转发请求到后端服务
             httpClient.forward(context, instance.getUrl());
-
+            forwarded = true;
         } catch (Exception e) {
             log.error("Gateway process error", e);
             GwUtils.sendResponse(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Gateway error: " + e.getMessage(), true);
+        } finally {
+            if (!forwarded) {
+                io.netty.util.ReferenceCountUtil.release(fullRequest);
+            }
         }
     }
 

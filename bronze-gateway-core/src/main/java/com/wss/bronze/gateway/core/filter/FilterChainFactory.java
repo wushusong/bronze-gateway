@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 @Component
 public class FilterChainFactory {
 
-    public boolean executePreFilters(GatewayContext ctx) {
+    public void executePreFilters(GatewayContext ctx) {
         try {
             GatewayProperties properties = ApplicationContextHolder.getBean(GatewayProperties.class);
 
@@ -23,27 +23,24 @@ public class FilterChainFactory {
                     .sorted(Comparator.comparingInt(GatewayProperties.FilterDefinition::getOrder))
                     .collect(Collectors.toList());
             if(filterDefinitions.isEmpty()){
-                return true;
+                return ;
             }
 
             // 按顺序执行过滤器
             for (GatewayProperties.FilterDefinition filterDef : filterDefinitions) {
                 try {
                     Filter filter = (Filter) ApplicationContextHolder.getBean(filterDef.getName());
-                    boolean b = filter.doFilter(ctx);
-                    if (b) {
-                        log.debug("Request terminated by filter: {}", filterDef.getName());
-                        return b;
-                    }
-                } catch (Exception e) {
+                    filter.doFilter(ctx);
+                } catch (FilterException e) {
                     log.error("Error executing filter: {}", filterDef.getName(), e);
-                    throw new RuntimeException("Filter execution failed: " + filterDef.getName(), e);
+                    throw e;
                 }
             }
-        } catch (Exception e) {
+        } catch (FilterException e) {
+            throw e;
+        }catch (Exception e) {
             log.error("Error executing filter chain", e);
-            throw new RuntimeException("Filter chain execution failed", e);
+            throw new FilterException("Filter chain execution failed");
         }
-        return true;
     }
 }

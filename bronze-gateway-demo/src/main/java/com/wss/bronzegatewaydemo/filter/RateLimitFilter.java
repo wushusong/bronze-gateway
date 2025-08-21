@@ -3,7 +3,7 @@ package com.wss.bronzegatewaydemo.filter;
 import com.google.common.util.concurrent.RateLimiter;
 import com.wss.bronze.gateway.core.GatewayContext;
 import com.wss.bronze.gateway.core.filter.Filter;
-import com.wss.bronze.gateway.core.utils.GwUtils;
+import com.wss.bronze.gateway.core.filter.FilterException;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import org.springframework.stereotype.Component;
 
@@ -13,12 +13,10 @@ public class RateLimitFilter implements Filter {
     private final RateLimiter rateLimiter = RateLimiter.create(1); // 1000请求/秒
 
     @Override
-    public boolean doFilter(GatewayContext ctx, Object... args) {
+    public void doFilter(GatewayContext ctx, Object... args) {
         if (!rateLimiter.tryAcquire()) {
-            GwUtils.sendResponse(ctx, HttpResponseStatus.TOO_MANY_REQUESTS, "Too many requests");
-            return false;
+            throw new FilterException(HttpResponseStatus.TOO_MANY_REQUESTS, "Too many requests");
         }
-        return true;
     }
 
     @Override

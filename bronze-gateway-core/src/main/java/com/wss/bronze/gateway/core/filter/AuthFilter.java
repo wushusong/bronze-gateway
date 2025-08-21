@@ -1,7 +1,6 @@
 //package com.wss.bronze.gateway.core.filter;
 //
 //import com.wss.bronze.gateway.core.GatewayContext;
-//import com.wss.bronze.gateway.core.utils.GwUtils;
 //import io.netty.handler.codec.http.HttpResponseStatus;
 //import org.springframework.stereotype.Component;
 //import org.springframework.util.StringUtils;
@@ -10,13 +9,11 @@
 //public class AuthFilter implements Filter {
 //
 //    @Override
-//    public boolean doFilter(GatewayContext ctx, Object... args) {
+//    public void doFilter(GatewayContext ctx, Object... args) {
 //        String token = ctx.getHeaders().get("Authorization");
 //        if (!StringUtils.hasText(token) || !isValidToken(token)) {
-//            GwUtils.sendResponse(ctx, HttpResponseStatus.TOO_MANY_REQUESTS, "Unauthorized");
-//            return false;
+//            throw new FilterException(HttpResponseStatus.TOO_MANY_REQUESTS, "Unauthorized");
 //        }
-//        return true;
 //    }
 //
 //    private boolean isValidToken(String token) {
