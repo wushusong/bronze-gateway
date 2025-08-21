@@ -17,9 +17,15 @@
 <!-- <p align="center">学习测试请拉取 master 分支，dev 是在开发分支 (在根目录执行 `git checkout master`)</p> -->
 <!--<p align="center"><a href="https://sa-token.cc" target="_blank">在线文档：https://sa-token.cc</a></p>-->
 
-# bronze-gateway
+# 开源许可
 
 本项目是一个开源项目，使用 Apache-2.0 许可。有关许可的详细信息，请参阅 [LICENSE](LICENSE) 文件。
+
+# 源码
+
+[gitee](https://gitee.com/wushusong/bronze-gateway)
+
+[gitcode](https://gitcode.com/wushusong/bronze-gateway)
 
 # 1、项目集成 bronze-gateway
 
