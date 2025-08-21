@@ -19,6 +19,8 @@
 
 # 1、项目集成 bronze-gateway
 
+springboot版本要求：2.7.18及以上
+
 ## 1、引入依赖
 
 ````
