@@ -22,6 +22,14 @@ public class GwUtils {
         sendResponse(context.getCtx(), status, message, true);
     }
 
+    public static void sendError(GatewayContext context, String message) {
+        sendResponse(context.getCtx(), HttpResponseStatus.INTERNAL_SERVER_ERROR, "Backend error: " + message, true);
+    }
+
+    public static void sendTimeoutError(GatewayContext context) {
+        sendResponse(context.getCtx(), HttpResponseStatus.GATEWAY_TIMEOUT, "Backend service timeout", true);
+    }
+
     /**
      * 返回响应
      * @param ctx

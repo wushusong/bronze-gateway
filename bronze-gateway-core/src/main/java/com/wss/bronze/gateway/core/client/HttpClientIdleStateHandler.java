@@ -1,6 +1,7 @@
 package com.wss.bronze.gateway.core.client;
 
 import com.wss.bronze.gateway.core.GatewayContext;
+import com.wss.bronze.gateway.core.utils.GwUtils;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
@@ -28,7 +29,7 @@ public class HttpClientIdleStateHandler extends IdleStateHandler {
 
             if (gatewayContext != null) {
                 log.warn("Connection timeout to backend service");
-                sendTimeoutError(gatewayContext);
+                GwUtils.sendTimeoutError(gatewayContext);
             }
 
             // 关闭连接
@@ -36,15 +37,5 @@ public class HttpClientIdleStateHandler extends IdleStateHandler {
         }
     }
 
-    private void sendTimeoutError(GatewayContext context) {
-        io.netty.handler.codec.http.DefaultFullHttpResponse response =
-            new io.netty.handler.codec.http.DefaultFullHttpResponse(
-                io.netty.handler.codec.http.HttpVersion.HTTP_1_1,
-                io.netty.handler.codec.http.HttpResponseStatus.GATEWAY_TIMEOUT,
-                io.netty.buffer.Unpooled.copiedBuffer("Backend service timeout", io.netty.util.CharsetUtil.UTF_8)
-            );
-        response.headers().set(io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE, "text/plain; charset=UTF-8");
 
-        context.getCtx().writeAndFlush(response).addListener(io.netty.channel.ChannelFutureListener.CLOSE);
-    }
 }
