@@ -7,6 +7,9 @@ import org.springframework.stereotype.Component;
 
 import java.util.Comparator;
 
+/**
+ * @author wss
+ */
 @Component
 public class PropertiesRouter implements Router {
 

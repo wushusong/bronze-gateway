@@ -7,6 +7,9 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.FullHttpResponse;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * @author wss
+ */
 @Slf4j
 public class HttpClientHandler extends SimpleChannelInboundHandler<FullHttpResponse> {
 

@@ -7,6 +7,9 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * @author wss
+ */
 @Component
 public class RoundRobinLoadBalancer implements LoadBalancer {
 

@@ -18,6 +18,9 @@ import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
+/**
+ * @author wss
+ */
 @Slf4j
 @Component
 public class HttpClient {

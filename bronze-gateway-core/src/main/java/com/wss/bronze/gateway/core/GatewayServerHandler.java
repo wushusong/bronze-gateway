@@ -13,6 +13,9 @@ import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * @author wss
+ */
 @Slf4j
 @io.netty.channel.ChannelHandler.Sharable
 public class GatewayServerHandler extends ChannelInboundHandlerAdapter {

@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.concurrent.TimeUnit;
 
 /**
+ * @author wss
  * 空闲状态检测处理器，用于处理连接超时
  */
 @Slf4j

@@ -11,6 +11,9 @@ import lombok.Data;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * @author wss
+ */
 @Data
 public class GatewayContext {
     private ChannelHandlerContext ctx;
