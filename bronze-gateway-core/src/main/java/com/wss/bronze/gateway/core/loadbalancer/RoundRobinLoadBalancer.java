@@ -18,6 +18,7 @@ public class RoundRobinLoadBalancer implements LoadBalancer {
             return null;
         }
 
+        //轮询策略
         String key = instances.get(0).getServiceId();
         AtomicInteger position = positionMap.computeIfAbsent(key, k -> new AtomicInteger(0));
 
