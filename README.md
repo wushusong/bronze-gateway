@@ -13,6 +13,9 @@
   <a href="#" target="_blank">
     <img alt="License: APACHE-2.0" src="https://img.shields.io/badge/License-apache2.0-yellow.svg" />
   </a>
+  <a href='https://gitee.com/wushusong/bronze-gateway/stargazers'><img src='https://gitee.com/wushusong/bronze-gateway/badge/star.svg?theme=dark' alt='star'></img></a>
+
+[![wushusong/bronze-gateway](https://gitee.com/wushusong/bronze-gateway/widgets/widget_card.svg?colors=393222,ebdfc1,fffae5,d8ca9f,393222,a28b40)](https://gitee.com/wushusong/bronze-gateway)
 
 </p>
 
