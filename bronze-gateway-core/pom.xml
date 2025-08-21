@@ -36,10 +36,10 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
+        <spring-boot.version>2.7.18</spring-boot.version>
+
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
-
-        <spring-boot.version>2.7.18</spring-boot.version>
     </properties>
 
     <dependencies>
@@ -49,26 +49,12 @@
             <version>${spring-boot.version}</version>
         </dependency>
 
-        <!--web 模块-->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-            <version>${spring-boot.version}</version>
-            <exclusions>
-                <!--排除tomcat依赖-->
-                <exclusion>
-                    <artifactId>spring-boot-starter-tomcat</artifactId>
-                    <groupId>org.springframework.boot</groupId>
-                </exclusion>
-            </exclusions>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+            <version>5.3.1</version>
         </dependency>
 
-        <!--必备：undertow容器-->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-undertow</artifactId>
-            <version>${spring-boot.version}</version>
-        </dependency>
 
         <!-- Netty 4.1.86.Final -->
         <dependency>
