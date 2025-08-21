@@ -35,7 +35,7 @@ springboot版本要求：2.7.18及以上
 
 ````
         <dependency>
-            <groupId>com.wss</groupId>
+            <groupId>io.github.wushusong</groupId>
             <artifactId>bronze-gateway-core</artifactId>
             <version>1.0.0</version>
         </dependency>
