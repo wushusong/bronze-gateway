@@ -18,6 +18,9 @@ import java.util.Map;
 //@RefreshScope
 public class GatewayProperties {
     private int port = 9999;
+    private long backendResponseTimeoutMs = 5000L;
+    private long clientWriteTimeoutMs = 5000L;
+
     private List<RouteDefinition> routes = new ArrayList<>();
     private List<FilterDefinition> filters = new ArrayList<>();
 
