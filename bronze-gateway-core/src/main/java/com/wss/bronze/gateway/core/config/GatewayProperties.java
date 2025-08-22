@@ -24,12 +24,11 @@ public class GatewayProperties {
     private long backendResponseTimeoutMs = 5000L;
     //客户端写入超时时间
     private long clientWriteTimeoutMs = 5000L;
-
-//    private int maxConnections = 10;
-//    private int maxPendingAcquires = 5;
-//    private int acquireTimeoutMs = 5000;
+    //连接超时时间
     private int connectTimeoutMs = 5000;
+    //重试次数 -1不重试
     private int maxRetries = -1;
+    //报文最大长度
     private int maxContentLength = 1024 * 1024;
 
     private Resilience resilience = new Resilience();
@@ -38,15 +37,21 @@ public class GatewayProperties {
 
     @Data
     public static class RouteDefinition {
+        //服务id，每个服务唯一
         private String id;
+        //服务访问路径，注意，前后都要斜杠，不能有*号
         private String path;
+        //负载均衡类型 roundRobinLoadBalancer轮询 / WeightedLoadBalancer权重
         private String loadBalancerType = LoadBalancerTypeEnums.ROUND_ROBIN.getKey();
+        //过滤器
         private List<FilterDefinition> filters = new ArrayList<>();
+        //服务实例
         private List<Instance> instances = new ArrayList<>();
     }
 
     @Data
     public static class FilterDefinition {
+        //路由名称，要求与@Component("AuthFilter")匹配
         private String name;
         private Map<String, String> args = new HashMap<>();
         private int order = 0;
@@ -54,8 +59,11 @@ public class GatewayProperties {
 
     @Data
     public static class Instance {
+        //同一个服务，不同实例id，要求唯一
         private String serviceId;
+        //实例地址，http://localhost:8081 # 服务地址，到端口一层即可
         private String url;
+        //权重，目前系统默认轮询策略
         private int weight = 1;
         private boolean healthy = true;
     }
