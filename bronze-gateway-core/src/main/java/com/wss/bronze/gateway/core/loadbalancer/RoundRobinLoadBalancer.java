@@ -8,24 +8,89 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
+ * 轮询负载均衡器实现
+ * 使用原子操作确保线程安全，支持多个服务实例的独立轮询
+ * 
  * @author wss
  */
 @Component
 public class RoundRobinLoadBalancer implements LoadBalancer {
 
-    private final ConcurrentHashMap<String, AtomicInteger> positionMap = new ConcurrentHashMap<>();
+    /**
+     * 存储每个服务的轮询位置，key为服务ID，value为原子计数器
+     */
+    private final ConcurrentHashMap<String, AtomicInteger> servicePositionMap = new ConcurrentHashMap<>();
 
     @Override
     public GatewayProperties.Instance choose(List<GatewayProperties.Instance> instances) {
+        // 参数校验
         if (instances == null || instances.isEmpty()) {
             return null;
         }
 
-        //轮询策略
-        String key = instances.get(0).getServiceId();
-        AtomicInteger position = positionMap.computeIfAbsent(key, k -> new AtomicInteger(0));
+        int instanceCount = instances.size();
+        if (instanceCount == 1) {
+            // 只有一个实例时直接返回，避免不必要的计算
+            return instances.get(0);
+        }
 
-        int pos = Math.abs(position.getAndIncrement());
-        return instances.get(pos % instances.size());
+        // 获取服务ID作为轮询的key
+        String serviceId = getServiceId(instances);
+        if (serviceId == null) {
+            // 如果无法获取服务ID，使用第一个实例
+            return instances.get(0);
+        }
+
+        // 获取或创建该服务的原子计数器
+        AtomicInteger position = servicePositionMap.computeIfAbsent(serviceId, k -> new AtomicInteger(0));
+        
+        // 计算下一个位置，使用模运算确保在有效范围内
+        int nextPosition = position.getAndIncrement() % instanceCount;
+        
+        // 处理负数情况（虽然理论上不会发生，但为了健壮性）
+        if (nextPosition < 0) {
+            nextPosition = Math.abs(nextPosition) % instanceCount;
+        }
+        
+        return instances.get(nextPosition);
+    }
+
+    /**
+     * 获取服务ID，优先使用第一个实例的服务ID
+     * 
+     * @param instances 实例列表
+     * @return 服务ID，如果无法获取则返回null
+     */
+    private String getServiceId(List<GatewayProperties.Instance> instances) {
+        if (instances != null && !instances.isEmpty()) {
+            GatewayProperties.Instance firstInstance = instances.get(0);
+            return firstInstance != null ? firstInstance.getServiceId() : null;
+        }
+        return null;
+    }
+
+    /**
+     * 清理指定服务的轮询状态（可选方法，用于服务下线时清理内存）
+     * 
+     * @param serviceId 服务ID
+     */
+    public void removeServicePosition(String serviceId) {
+        if (serviceId != null) {
+            servicePositionMap.remove(serviceId);
+        }
+    }
+
+    /**
+     * 获取当前服务的轮询位置（用于监控和调试）
+     * 
+     * @param serviceId 服务ID
+     * @return 当前轮询位置，如果服务不存在则返回-1
+     */
+    public int getCurrentPosition(String serviceId) {
+        if (serviceId == null) {
+            return -1;
+        }
+        AtomicInteger position = servicePositionMap.get(serviceId);
+        return position != null ? position.get() : -1;
     }
 }
