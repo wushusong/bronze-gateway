@@ -39,7 +39,7 @@ springboot版本要求：2.7.18及以上
         <dependency>
             <groupId>io.github.wushusong</groupId>
             <artifactId>bronze-gateway-core</artifactId>
-            <version>1.0.0</version>
+            <version>1.0.1</version>
         </dependency>
 ````
 
@@ -54,7 +54,7 @@ gateway:
       instances: # 服务实例
         - serviceId: user-service # 服务实例名称，同一个服务下，不同实例，serviceId配置一样
           url: http://localhost:8081 # 服务地址，到端口一层即可
-          weight: 1 # 权重，预留，目前系统默认轮询策略
+          weight: 1 # 权重，目前系统默认轮询策略
           healthy: true # 服务健康状态，预留，目前默认为true
     - id: jm-cloud-gw
       path: /jm-cloud-gw/ # 注意，前后都要斜杠，不能有*号
@@ -65,7 +65,7 @@ gateway:
           healthy: true
         - serviceId: jm-cloud-gw
           url: http://192.168.1.240:23500
-          weight: 1
+          weight: 4
           healthy: true
   filters: # 过滤器配置
 #    - name: AuthFilter  # 与@Component("AuthFilter")匹配

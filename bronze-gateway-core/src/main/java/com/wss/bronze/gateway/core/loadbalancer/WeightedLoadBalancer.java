@@ -76,18 +76,18 @@ public class WeightedLoadBalancer implements LoadBalancer {
      */
     private static class WeightedRoundRobin {
         private final List<GatewayProperties.Instance> instances;
-        private final AtomicInteger position = new AtomicInteger(0);
-
+        private final AtomicInteger currentIndex = new AtomicInteger(0);
+        private final AtomicInteger currentWeight = new AtomicInteger(0);
+        
         private int maxWeight = 0;
-
         private int gcd = 1; // 所有权重的最大公约数
 
         public WeightedRoundRobin(List<GatewayProperties.Instance> instances) {
             this.instances = instances;
-            if(null == instances || instances.isEmpty()){
+            if (instances == null || instances.isEmpty()) {
                 maxWeight = 0;
                 gcd = 1;
-            }else {
+            } else {
                 // 计算最大权重
                 maxWeight = instances.stream()
                         .mapToInt(GatewayProperties.Instance::getWeight)
@@ -114,16 +114,35 @@ public class WeightedLoadBalancer implements LoadBalancer {
                 return instances.get(0);
             }
 
-            int current = position.getAndUpdate(
-                    i -> (i + 1) % (maxWeight / gcd)
-            );
-
-            for (GatewayProperties.Instance node : instances) {
-                if (node.getWeight() >= (current + 1) * gcd) {
-                    return node;
+            // 使用加权轮询算法
+            while (true) {
+                int index = currentIndex.get();
+                int weight = currentWeight.get();
+                
+                // 如果当前权重为0，重置为最大权重
+                if (weight == 0) {
+                    weight = maxWeight;
+                    currentWeight.set(weight);
                 }
+                
+                // 遍历所有实例
+                for (int i = 0; i < instances.size(); i++) {
+                    int actualIndex = (index + i) % instances.size();
+                    GatewayProperties.Instance instance = instances.get(actualIndex);
+                    
+                    // 如果当前实例的权重大于等于当前权重，则选中该实例
+                    if (instance.getWeight() >= weight) {
+                        // 更新索引和权重
+                        currentIndex.set((actualIndex + 1) % instances.size());
+                        currentWeight.set(weight - gcd);
+                        return instance;
+                    }
+                }
+                
+                // 如果没有找到合适的实例，减少权重
+                weight -= gcd;
+                currentWeight.set(weight);
             }
-            return instances.get(0);
         }
     }
 }
