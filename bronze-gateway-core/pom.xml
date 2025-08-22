@@ -3,13 +3,9 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>io.github.wushusong</groupId>
-        <artifactId>bronze-gateway</artifactId>
-        <version>1.0.0</version>
-    </parent>
-
+    <groupId>io.github.wushusong</groupId>
     <artifactId>bronze-gateway-core</artifactId>
+    <version>1.0.1</version>
     <packaging>jar</packaging>
 
     <name>bronze-gateway-core</name>
@@ -26,7 +22,7 @@
     <scm>
         <connection>scm:git:git@gitcode.com:wushusong</connection>
         <developerConnection>scm:git:git@gitcode.com:wushusong</developerConnection>
-        <url>https://github.com/955-955</url>
+        <url>https://nas2.wushusong.cn/note/</url>
         <tag>HEAD</tag>
     </scm>
 
@@ -75,6 +71,7 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>1.18.30</version>
+            <scope>provided</scope>
             <optional>true</optional>
         </dependency>
 

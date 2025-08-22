@@ -14,14 +14,13 @@
 
     <!--项目子模块-->
     <modules>
-        <module>bronze-gateway-core</module>
+<!--        <module>bronze-gateway-core</module>-->
     </modules>
 
     <properties>
         <java.version>1.8</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <spring-boot.version>2.7.18</spring-boot.version>
     </properties>
 
     <dependencies>
