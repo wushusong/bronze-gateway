@@ -176,6 +176,7 @@ public class HttpClient implements DisposableBean {
             }else {
                 doResilienceNum(context,circuitBreaker,fallbackHandler,serviceId,"Service unavailable: " + error.getMessage());
             }
+            return;
         }
         if (retryCount < maxRetries) {
             log.info("Retrying request to {} (attempt {}/{})", url, retryCount + 1, maxRetries);
