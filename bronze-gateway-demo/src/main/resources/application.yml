@@ -24,7 +24,7 @@ gateway:
       instances:
         - serviceId: jm-cloud-gw-1
           url: http://192.168.1.240:23500
-          weight: 0
+          weight: 1
           healthy: true
         - serviceId: jm-cloud-gw-2
           url: http://192.168.1.111:23500

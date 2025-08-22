@@ -2,11 +2,11 @@
 <p align="center">
 	<img alt="logo" src="doc/logo_1.png" width="174" height="172">
 </p>
-<h1 align="center" style="margin: 30px 0 30px; font-weight: bold;">bronze-gateway v1.0.3</h1>
+<h1 align="center" style="margin: 30px 0 30px; font-weight: bold;">bronze-gateway v1.0.4</h1>
 <h4 align="center">基于netty实现的轻量级、高性能网关！</h4>
 <p align="center">
 
-  <img alt="Version" src="https://img.shields.io/badge/version-1.0.3-blue.svg?cacheSeconds=2592000" />
+  <img alt="Version" src="https://img.shields.io/badge/version-1.0.4-blue.svg?cacheSeconds=2592000" />
   <a href="https://nas2.wushusong.cn/note/" target="_blank">
     <img alt="Documentation" src="https://img.shields.io/badge/documentation-yes-brightgreen.svg" />
   </a>
@@ -50,6 +50,9 @@ gateway:
   port: 9999
   backendResponseTimeoutMs: 6000 # 后端响应超时时间
   clientWriteTimeoutMs: 6000 # 客户端写入超时时间
+  connectTimeoutMs: 6000 # 连接超时时间
+  maxConnectionsPerHost: 64 # 每个主机的最大并发连接数（如果没有配置，使用合理默认值）
+  maxPendingAcquires: 10000 # 每个主机最大等待连接数（如果没有配置，使用合理默认值）
   routes:
     - id: user-service # 服务名称，每个服务唯一
       path: /user/ # 服务访问路径，注意，前后都要斜杠，不能有*号
@@ -64,7 +67,7 @@ gateway:
       instances:
         - serviceId: jm-cloud-gw-1
           url: http://192.168.1.240:23500
-          weight: 0
+          weight: 1
           healthy: true
         - serviceId: jm-cloud-gw-2
           url: http://192.168.1.111:23500
@@ -85,8 +88,9 @@ gateway:
     slowCallDurationThreshold: 10 # 慢调用持续时间阈值
     waitDurationInOpenState: 60 # 熔断器开启状态持续时间
     permittedNumberOfCallsInHalfOpenState: 5 # 半开状态允许的调用次数
-    minimumNumberOfCalls: 10 # 计算失败率所需的最小调用次数
+    minimumNumberOfCalls: 2 # 计算失败率所需的最小调用次数
     slidingWindowSize: 5 # 滑动窗口大小
+
 ````
 
 # 熔断
