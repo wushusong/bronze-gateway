@@ -9,6 +9,7 @@ gateway:
   port: 9999
   backendResponseTimeoutMs: 6000 # 后端响应超时时间
   clientWriteTimeoutMs: 6000 # 客户端写入超时时间
+  connectTimeoutMs: 6000 # 连接超时时间
   routes:
     - id: user-service # 服务名称，每个服务唯一
       path: /user/ # 服务访问路径，注意，前后都要斜杠，不能有*号
@@ -44,5 +45,5 @@ gateway:
     slowCallDurationThreshold: 10 # 慢调用持续时间阈值
     waitDurationInOpenState: 60 # 熔断器开启状态持续时间
     permittedNumberOfCallsInHalfOpenState: 5 # 半开状态允许的调用次数
-    minimumNumberOfCalls: 10 # 计算失败率所需的最小调用次数
+    minimumNumberOfCalls: 2 # 计算失败率所需的最小调用次数
     slidingWindowSize: 5 # 滑动窗口大小

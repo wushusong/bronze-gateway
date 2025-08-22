@@ -5,6 +5,7 @@ import com.wss.bronze.gateway.core.client.HttpClient;
 import com.wss.bronze.gateway.core.enums.CircuitBreakerState;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -13,6 +14,7 @@ import java.util.function.Supplier;
 /**
  * @author wss
  */
+@Slf4j
 @Component
 public class CircuitBreakerDecorator {
 
@@ -37,8 +39,7 @@ public class CircuitBreakerDecorator {
         try {
             // 执行HTTP调用，让熔断器自动处理权限检查和状态管理
             Supplier<Void> supplier = CircuitBreaker.decorateSupplier(
-                circuitBreaker,
-                () -> {
+                circuitBreaker,() -> {
                     try {
                         httpClient.forward(context, url,true,serviceId,circuitBreakerManager,fallbackHandler);
                     } catch (Exception e) {
@@ -50,10 +51,10 @@ public class CircuitBreakerDecorator {
 
             supplier.get();
         } catch (CallNotPermittedException e) {
-            // 熔断器拒绝调用
+            log.warn("CircuitBreakerDecorator Circuit breaker is open for service: {}", serviceId);
             fallbackHandler.handleFallback(context, serviceId, "Call not permitted by circuit breaker");
         } catch (Exception e) {
-            // 其他异常，熔断器已经自动记录了失败状态
+            log.error("CircuitBreakerDecorator Service call failed for service: {}", serviceId, e);
             fallbackHandler.handleFallback(context, serviceId, "Service call failed: " + e.getMessage());
         }
     }

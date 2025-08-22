@@ -5,6 +5,7 @@ import com.wss.bronze.gateway.core.config.ApplicationContextHolder;
 import com.wss.bronze.gateway.core.config.GatewayProperties;
 import com.wss.bronze.gateway.core.resilience.CircuitBreakerManager;
 import com.wss.bronze.gateway.core.resilience.FallbackHandler;
+import com.wss.bronze.gateway.core.resilience.ResilienceException;
 import com.wss.bronze.gateway.core.utils.GwUtils;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
@@ -69,7 +70,7 @@ public class HttpClient implements DisposableBean {
                 if (resilienceFlag && circuitBreakerManager != null) {
                     executeWithCircuitBreaker(context, url, serviceId, circuitBreakerManager, fallbackHandler);
                 } else {
-                    executeRequest(context, url, 0);
+                    executeRequest(context, url, 0,false,null,null,null);
                 }
             } catch (Exception e) {
                 log.error("Failed to forward request to: {}", url, e);
@@ -88,7 +89,7 @@ public class HttpClient implements DisposableBean {
 
         try {
             Supplier<Void> supplier = CircuitBreaker.decorateSupplier(circuitBreaker, () -> {
-                executeRequest(context, url, 0);
+                executeRequest(context, url, 0,true,circuitBreaker,fallbackHandler,serviceId);
                 return null;
             });
             supplier.get();
@@ -104,14 +105,14 @@ public class HttpClient implements DisposableBean {
     /**
      * 执行HTTP请求，支持重试机制
      */
-    private void executeRequest(GatewayContext context, String url, int retryCount) {
+    private void executeRequest(GatewayContext context, String url, int retryCount,boolean resilienceFlag,CircuitBreaker circuitBreaker,FallbackHandler fallbackHandler,String serviceId) {
         try {
             URI uri = new URI(url);
             String host = uri.getHost();
             int port = getPort(uri);
             String poolKey = host + ":" + port;
 
-                        // 直接创建连接，不使用连接池
+            // 直接创建连接，不使用连接池
             Bootstrap bootstrap = createBootstrap(host, port);
             ChannelFuture connectFuture = bootstrap.connect();
 
@@ -123,41 +124,71 @@ public class HttpClient implements DisposableBean {
                     } catch (Exception e) {
                         log.error("Failed to send request to: {}", url, e);
                         channel.close();
-                        handleRequestError(context, url, retryCount, e);
+                        handleRequestError(context, url, retryCount,resilienceFlag, circuitBreaker,fallbackHandler,serviceId,e);
                     }
                 } else {
                     log.error("Failed to connect to backend: {}", poolKey, future.cause());
-                    handleRequestError(context, url, retryCount, future.cause());
+                    handleRequestError(context, url, retryCount,resilienceFlag, circuitBreaker,fallbackHandler,serviceId,future.cause());
                 }
             });
-
         } catch (URISyntaxException e) {
             log.error("Invalid URL: {}", url, e);
-            GwUtils.sendResponse(context, HttpResponseStatus.BAD_REQUEST,
-                "Invalid URL: " + e.getMessage());
+            if(!resilienceFlag) {
+                GwUtils.sendResponse(context, HttpResponseStatus.BAD_REQUEST,
+                        String.format("Invalid URL:%s,%s",url,e.getMessage()));
+            }else {
+                throw new ResilienceException(String.format("Invalid URL:%s,%s",url,e.getMessage()));
+            }
+        }catch (ResilienceException e){
+            throw e;
         } catch (Exception e) {
             log.error("Unexpected error while executing request to: {}", url, e);
-            handleRequestError(context, url, retryCount, e);
+            handleRequestError(context, url, retryCount,resilienceFlag, circuitBreaker,fallbackHandler,serviceId,e);
+        }
+    }
+
+    private void doResilienceNum(GatewayContext context,CircuitBreaker circuitBreaker,FallbackHandler fallbackHandler,String serviceId,String msg){
+        try {
+            // 执行HTTP调用，让熔断器自动处理权限检查和状态管理
+            Supplier<Void> supplier = CircuitBreaker.decorateSupplier(
+                    circuitBreaker,() -> {
+                        throw new ResilienceException(msg);
+                    }
+            );
+            supplier.get();
+        } catch (CallNotPermittedException e) {
+            log.warn("CircuitBreakerDecorator Circuit breaker is open for service: {}", serviceId);
+            fallbackHandler.handleFallback(context, serviceId, "Call not permitted by circuit breaker");
+        } catch (Exception e) {
+            log.error("CircuitBreakerDecorator Service call failed for service: {}", serviceId, e);
+            fallbackHandler.handleFallback(context, serviceId, "Service call failed: " + e.getMessage());
         }
     }
 
     /**
      * 处理请求错误，支持重试
      */
-    private void handleRequestError(GatewayContext context, String url, int retryCount, Throwable error) {
+    private void handleRequestError(GatewayContext context, String url, int retryCount,boolean resilienceFlag,CircuitBreaker circuitBreaker,FallbackHandler fallbackHandler,String serviceId, Throwable error) {
         if(maxRetries <= 0){
-            GwUtils.sendResponse(context, HttpResponseStatus.BAD_GATEWAY,
-                    "Service unavailable: " + error.getMessage());
-        }else {
-            if (retryCount < maxRetries) {
-                log.info("Retrying request to {} (attempt {}/{})", url, retryCount + 1, maxRetries);
-                // 延迟重试，避免立即重试
-                group.schedule(() -> executeRequest(context, url, retryCount + 1),
-                        (retryCount + 1) * 1000L, TimeUnit.MILLISECONDS);
-            } else {
-                log.error("Max retries exceeded for request to: {}", url);
+            if(!resilienceFlag){
+                GwUtils.sendResponse(context, HttpResponseStatus.BAD_GATEWAY,
+                        "Service unavailable: " + error.getMessage());
+            }else {
+                doResilienceNum(context,circuitBreaker,fallbackHandler,serviceId,"Service unavailable: " + error.getMessage());
+            }
+        }
+        if (retryCount < maxRetries) {
+            log.info("Retrying request to {} (attempt {}/{})", url, retryCount + 1, maxRetries);
+            // 延迟重试，避免立即重试
+            group.schedule(() -> executeRequest(context, url, retryCount + 1,resilienceFlag,circuitBreaker,fallbackHandler,serviceId),
+                    (retryCount + 1) * 1000L, TimeUnit.MILLISECONDS);
+        } else {
+            log.error("Max retries exceeded for request to: {}", url);
+            if(!resilienceFlag){
                 GwUtils.sendResponse(context, HttpResponseStatus.BAD_GATEWAY,
                         "Service unavailable after " + maxRetries + " retries: " + error.getMessage());
+            }else {
+                doResilienceNum(context,circuitBreaker,fallbackHandler,serviceId,"Service unavailable after " + maxRetries + " retries: " + error.getMessage());
             }
         }
     }
