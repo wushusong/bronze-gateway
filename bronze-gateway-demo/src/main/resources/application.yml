@@ -13,7 +13,7 @@ gateway:
     - id: user-service
       path: /user/
       instances:
-        - serviceId: user-service
+        - serviceId: user-service-1
           url: http://localhost:8081
           weight: 1
           healthy: true
@@ -21,18 +21,18 @@ gateway:
       path: /jm-cloud-gw/ # 注意，前后都要斜杠，不能有*号
       loadBalancerType: weightedLoadBalancer # 负载均衡类型 roundRobinLoadBalancer轮询 / WeightedLoadBalancer权重
       instances:
-        - serviceId: jm-cloud-gw
+        - serviceId: jm-cloud-gw-1
           url: http://192.168.1.240:23500
+          weight: 0
+          healthy: true
+        - serviceId: jm-cloud-gw-2
+          url: http://192.168.1.111:23500
           weight: 1
           healthy: true
-        - serviceId: jm-cloud-gw
-          url: http://192.168.1.111:23500
-          weight: 4
-          healthy: true
-  filters:
+#  filters:
 #    - name: AuthFilter  # 与@Component("AuthFilter")匹配
 #      order: -100
-    - name: RateLimitFilter  # 与@Component("RateLimitFilter")匹配
-      order: -90
-      args:
-        permitsPerSecond: "1000"
+#    - name: RateLimitFilter  # 与@Component("RateLimitFilter")匹配
+#      order: -90
+#      args:
+#        permitsPerSecond: "1000"

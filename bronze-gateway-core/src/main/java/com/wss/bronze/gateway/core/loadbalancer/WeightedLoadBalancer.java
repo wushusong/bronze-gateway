@@ -24,7 +24,7 @@ public class WeightedLoadBalancer implements LoadBalancer {
     private final ConcurrentHashMap<String, WeightedRoundRobin> serviceWeightMap = new ConcurrentHashMap<>();
 
     @Override
-    public GatewayProperties.Instance choose(List<GatewayProperties.Instance> instances) {
+    public GatewayProperties.Instance choose(List<GatewayProperties.Instance> instances,String serviceId) {
         // 参数校验
         if (instances == null || instances.isEmpty()) {
             return null;
@@ -37,7 +37,6 @@ public class WeightedLoadBalancer implements LoadBalancer {
         }
 
         // 获取服务ID
-        String serviceId = getServiceId(instances);
         if (serviceId == null) {
             return instances.get(0);
         }
@@ -48,17 +47,6 @@ public class WeightedLoadBalancer implements LoadBalancer {
 
         // 选择下一个实例
         return weightedRoundRobin.next();
-    }
-
-    /**
-     * 获取服务ID
-     */
-    private String getServiceId(List<GatewayProperties.Instance> instances) {
-        if (instances != null && !instances.isEmpty()) {
-            GatewayProperties.Instance firstInstance = instances.get(0);
-            return firstInstance != null ? firstInstance.getServiceId() : null;
-        }
-        return null;
     }
 
     /**
@@ -78,7 +66,7 @@ public class WeightedLoadBalancer implements LoadBalancer {
         private final List<GatewayProperties.Instance> instances;
         private final AtomicInteger currentIndex = new AtomicInteger(0);
         private final AtomicInteger currentWeight = new AtomicInteger(0);
-        
+
         private int maxWeight = 0;
         private int gcd = 1; // 所有权重的最大公约数
 
@@ -118,18 +106,18 @@ public class WeightedLoadBalancer implements LoadBalancer {
             while (true) {
                 int index = currentIndex.get();
                 int weight = currentWeight.get();
-                
+
                 // 如果当前权重为0，重置为最大权重
                 if (weight == 0) {
                     weight = maxWeight;
                     currentWeight.set(weight);
                 }
-                
+
                 // 遍历所有实例
                 for (int i = 0; i < instances.size(); i++) {
                     int actualIndex = (index + i) % instances.size();
                     GatewayProperties.Instance instance = instances.get(actualIndex);
-                    
+
                     // 如果当前实例的权重大于等于当前权重，则选中该实例
                     if (instance.getWeight() >= weight) {
                         // 更新索引和权重
@@ -138,7 +126,7 @@ public class WeightedLoadBalancer implements LoadBalancer {
                         return instance;
                     }
                 }
-                
+
                 // 如果没有找到合适的实例，减少权重
                 weight -= gcd;
                 currentWeight.set(weight);

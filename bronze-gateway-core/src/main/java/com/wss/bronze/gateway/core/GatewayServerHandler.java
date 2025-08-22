@@ -9,12 +9,14 @@ import com.wss.bronze.gateway.core.filter.FilterException;
 import com.wss.bronze.gateway.core.loadbalancer.LoadBalancer;
 import com.wss.bronze.gateway.core.loadbalancer.RoundRobinLoadBalancer;
 import com.wss.bronze.gateway.core.loadbalancer.WeightedLoadBalancer;
+import com.wss.bronze.gateway.core.resilience.CircuitBreakerDecorator;
 import com.wss.bronze.gateway.core.router.Router;
 import com.wss.bronze.gateway.core.utils.GwUtils;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.util.ReferenceCountUtil;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -30,6 +32,7 @@ public class GatewayServerHandler extends ChannelInboundHandlerAdapter {
     private LoadBalancer weightedLoadBalancer;
     private FilterChainFactory filterChainFactory;
     private HttpClient httpClient;
+    private CircuitBreakerDecorator circuitBreakerDecorator;
 
     // 确保线程安全地初始化依赖
     private final Object lock = new Object();
@@ -43,6 +46,10 @@ public class GatewayServerHandler extends ChannelInboundHandlerAdapter {
                     weightedLoadBalancer = ApplicationContextHolder.getBean(WeightedLoadBalancer.class);
                     filterChainFactory = ApplicationContextHolder.getBean(FilterChainFactory.class);
                     httpClient = ApplicationContextHolder.getBean(HttpClient.class);
+                    try {
+                        circuitBreakerDecorator = ApplicationContextHolder.getBean(CircuitBreakerDecorator.class);
+                    }catch (Exception ignore){
+                    }
                 }
             }
         }
@@ -81,9 +88,9 @@ public class GatewayServerHandler extends ChannelInboundHandlerAdapter {
             // 负载均衡选择
             GatewayProperties.Instance instance = null;
             if(LoadBalancerTypeEnums.WEIGHTED_ROBIN.getKey().equals(route.getLoadBalancerType())){
-                instance = weightedLoadBalancer.choose(route.getInstances());
+                instance = weightedLoadBalancer.choose(route.getInstances(),route.getId());
             }else {
-                instance = roundRobinLoadBalancer.choose(route.getInstances());
+                instance = roundRobinLoadBalancer.choose(route.getInstances(),route.getId());
             }
 
             if (instance == null) {
@@ -92,14 +99,28 @@ public class GatewayServerHandler extends ChannelInboundHandlerAdapter {
             }
 
             //转发请求到后端服务
-            httpClient.forward(context, instance.getUrl());
+            try {
+                if(null == circuitBreakerDecorator){
+                    httpClient.forward(context, instance.getUrl(),false,instance.getServiceId(),null,null);
+                }else {
+                    //使用熔断器转发请求到后端服务
+                    circuitBreakerDecorator.executeWithCircuitBreaker(
+                            context,
+                            instance.getServiceId(),
+                            instance.getUrl()
+                    );
+                }
+            } catch (Exception e) {
+                GwUtils.sendResponse(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Service request exception: " + e.getMessage(), true);
+            }
+
             forwarded = true;
         } catch (Exception e) {
             log.error("Gateway process error", e);
             GwUtils.sendResponse(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Gateway error: " + e.getMessage(), true);
         } finally {
             if (!forwarded) {
-                io.netty.util.ReferenceCountUtil.release(fullRequest);
+                ReferenceCountUtil.release(fullRequest);
             }
         }
     }

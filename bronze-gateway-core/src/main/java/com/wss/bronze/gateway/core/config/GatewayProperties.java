@@ -20,8 +20,17 @@ import java.util.Map;
 public class GatewayProperties {
 
     private int port = 9999;
+    //后端响应超时时间
     private long backendResponseTimeoutMs = 5000L;
+    //客户端写入超时时间
     private long clientWriteTimeoutMs = 5000L;
+
+//    private int maxConnections = 10;
+//    private int maxPendingAcquires = 5;
+//    private int acquireTimeoutMs = 5000;
+    private int connectTimeoutMs = 5000;
+    private int maxRetries = -1;
+    private int maxContentLength = 1024 * 1024;
 
     private List<RouteDefinition> routes = new ArrayList<>();
     private List<FilterDefinition> filters = new ArrayList<>();

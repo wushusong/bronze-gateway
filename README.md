@@ -52,18 +52,18 @@ gateway:
     - id: user-service # 服务名称，每个服务唯一
       path: /user/ # 服务访问路径，注意，前后都要斜杠，不能有*号
       instances: # 服务实例
-        - serviceId: user-service # 服务实例名称，同一个服务下，不同实例，serviceId配置一样
+        - serviceId: user-service-1 # 服务实例名称，同一个服务下，不同实例，serviceId要求唯一
           url: http://localhost:8081 # 服务地址，到端口一层即可
           weight: 1 # 权重，目前系统默认轮询策略
           healthy: true # 服务健康状态，预留，目前默认为true
     - id: jm-cloud-gw
       path: /jm-cloud-gw/ # 注意，前后都要斜杠，不能有*号
       instances:
-        - serviceId: jm-cloud-gw
+        - serviceId: jm-cloud-gw-1
           url: http://192.168.1.240:23500
           weight: 1
           healthy: true
-        - serviceId: jm-cloud-gw
+        - serviceId: jm-cloud-gw-2
           url: http://192.168.1.240:23500
           weight: 4
           healthy: true

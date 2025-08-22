@@ -9,5 +9,5 @@ import java.util.List;
  * @author wss
  */
 public interface LoadBalancer {
-    GatewayProperties.Instance choose(List<GatewayProperties.Instance> instances);
+    GatewayProperties.Instance choose(List<GatewayProperties.Instance> instances,String serviceId);
 }

@@ -46,7 +46,7 @@
         <dependency>
             <groupId>io.github.wushusong</groupId>
             <artifactId>bronze-gateway-core</artifactId>
-            <version>1.0.0</version>
+            <version>1.0.1</version>
         </dependency>
 
     </dependencies>
