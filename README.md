@@ -2,7 +2,7 @@
 <p align="center">
 	<img alt="logo" src="doc/logo_1.png" width="150" height="150">
 </p>
-<h1 align="center" style="margin: 30px 0 30px; font-weight: bold;">bronze-gateway v1.0.0</h1>
+<h1 align="center" style="margin: 30px 0 30px; font-weight: bold;">bronze-gateway v1.0.1</h1>
 <h4 align="center">基于netty实现的轻量级、高性能网关！</h4>
 <p align="center">
 
