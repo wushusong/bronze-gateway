@@ -5,7 +5,7 @@
 
     <groupId>io.github.wushusong</groupId>
     <artifactId>bronze-gateway-core</artifactId>
-    <version>1.0.2</version>
+    <version>1.0.3</version>
     <packaging>jar</packaging>
 
     <name>bronze-gateway-core</name>
