@@ -5,7 +5,7 @@
 
     <groupId>io.github.wushusong</groupId>
     <artifactId>bronze-gateway</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
 
     <name>bronze-gateway</name>
     <description>基于netty实现的轻量级、高性能网关</description>
