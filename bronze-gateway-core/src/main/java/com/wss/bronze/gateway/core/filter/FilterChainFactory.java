@@ -40,7 +40,7 @@ public class FilterChainFactory {
             throw e;
         }catch (Exception e) {
             log.error("Error executing filter chain", e);
-            throw new FilterException("Filter chain execution failed");
+            throw new FilterException("Filter chain execution failed:"+e.getMessage());
         }
     }
 }
