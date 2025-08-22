@@ -1,5 +1,6 @@
 package com.wss.bronze.gateway.core.resilience;
 
+import com.wss.bronze.gateway.core.config.GatewayProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
@@ -18,8 +19,8 @@ public class ResilienceConfig {
     }
 
     @Bean
-    public CircuitBreakerManager circuitBreakerManager() {
-        return new CircuitBreakerManager();
+    public CircuitBreakerManager circuitBreakerManager(GatewayProperties gatewayProperties) {
+        return new CircuitBreakerManager(gatewayProperties);
     }
 
     @Bean

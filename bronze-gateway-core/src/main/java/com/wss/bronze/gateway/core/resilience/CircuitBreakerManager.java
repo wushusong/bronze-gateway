@@ -1,5 +1,6 @@
 package com.wss.bronze.gateway.core.resilience;
 
+import com.wss.bronze.gateway.core.config.GatewayProperties;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
@@ -18,7 +19,9 @@ public class CircuitBreakerManager {
     private final CircuitBreakerRegistry circuitBreakerRegistry;
     private final Map<String, CircuitBreaker> circuitBreakers = new ConcurrentHashMap<>();
 
-    public CircuitBreakerManager() {
+    private GatewayProperties gatewayProperties;
+
+    public CircuitBreakerManager(GatewayProperties gatewayProperties) {
         // 创建默认的熔断器配置
         CircuitBreakerConfig circuitBreakerConfig = CircuitBreakerConfig.custom()
                 .failureRateThreshold(50) // 失败率阈值百分比

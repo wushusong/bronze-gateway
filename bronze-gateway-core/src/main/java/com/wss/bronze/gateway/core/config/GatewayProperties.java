@@ -32,6 +32,7 @@ public class GatewayProperties {
     private int maxRetries = -1;
     private int maxContentLength = 1024 * 1024;
 
+    private Resilience resilience = new Resilience();
     private List<RouteDefinition> routes = new ArrayList<>();
     private List<FilterDefinition> filters = new ArrayList<>();
 
@@ -57,6 +58,24 @@ public class GatewayProperties {
         private String url;
         private int weight = 1;
         private boolean healthy = true;
+    }
+
+    @Data
+    public static class Resilience {
+        // 失败率阈值百分比
+        private int failureRateThreshold = 50;
+        // 慢调用率阈值百分比
+        private int slowCallRateThreshold = 50;
+        // 慢调用持续时间阈值
+        private int slowCallDurationThreshold = 10;
+        // 熔断器开启状态持续时间
+        private int waitDurationInOpenState = 60;
+        // 半开状态允许的调用次数
+        private int permittedNumberOfCallsInHalfOpenState = 5;
+        // 计算失败率所需的最小调用次数
+        private int minimumNumberOfCalls = 10;
+        // 滑动窗口大小
+        private int slidingWindowSize = 5;
     }
 
 }
