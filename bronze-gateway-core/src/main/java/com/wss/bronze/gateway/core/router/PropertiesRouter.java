@@ -8,10 +8,8 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 /**
  * 基于配置属性的路由实现
@@ -35,8 +33,7 @@ public class PropertiesRouter implements Router {
     @PostConstruct
     public void init() {
         if (properties != null && properties.getRoutes() != null) {
-            sortedRoutes = properties.getRoutes().stream()
-                    .sorted(Comparator.comparingInt(GatewayProperties.RouteDefinition::getOrder)).collect(Collectors.toList());
+            sortedRoutes = properties.getRoutes();
             log.info("PropertiesRouter initialized with {} routes", sortedRoutes.size());
         } else {
             sortedRoutes = new ArrayList<>();
@@ -63,7 +60,7 @@ public class PropertiesRouter implements Router {
 
         if (matchedRoute.isPresent()) {
             GatewayProperties.RouteDefinition route = matchedRoute.get();
-            log.debug("Found matching route: {} -> {}", route.getPath(), route.getUri());
+            log.debug("Found matching route: {} -> {}", route.getPath(), route.getId());
             return route;
         } else {
             log.debug("No matching route found for path: {}", path);

@@ -1,5 +1,6 @@
 package com.wss.bronze.gateway.core.config;
 
+import com.wss.bronze.gateway.core.enums.LoadBalancerTypeEnums;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
@@ -17,6 +18,7 @@ import java.util.Map;
 @ConfigurationProperties(prefix = "gateway")
 //@RefreshScope
 public class GatewayProperties {
+
     private int port = 9999;
     private long backendResponseTimeoutMs = 5000L;
     private long clientWriteTimeoutMs = 5000L;
@@ -28,9 +30,8 @@ public class GatewayProperties {
     public static class RouteDefinition {
         private String id;
         private String path;
-        private String uri;
+        private String loadBalancerType = LoadBalancerTypeEnums.ROUND_ROBIN.getKey();
         private List<FilterDefinition> filters = new ArrayList<>();
-        private int order = 0;
         private List<Instance> instances = new ArrayList<>();
     }
 

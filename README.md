@@ -51,8 +51,6 @@ gateway:
   routes:
     - id: user-service # 服务名称，每个服务唯一
       path: /user/ # 服务访问路径，注意，前后都要斜杠，不能有*号
-      uri: http://localhost:8081 # 服务地址，到端口一层即可，预留，目前没有使用
-      order: 0 # 如果有多个路由，order值越小优先级越高
       instances: # 服务实例
         - serviceId: user-service # 服务实例名称，同一个服务下，不同实例，serviceId配置一样
           url: http://localhost:8081 # 服务地址，到端口一层即可
@@ -60,8 +58,6 @@ gateway:
           healthy: true # 服务健康状态，预留，目前默认为true
     - id: jm-cloud-gw
       path: /jm-cloud-gw/ # 注意，前后都要斜杠，不能有*号
-      uri: http://192.168.1.240:23500
-      order: 0
       instances:
         - serviceId: jm-cloud-gw
           url: http://192.168.1.240:23500

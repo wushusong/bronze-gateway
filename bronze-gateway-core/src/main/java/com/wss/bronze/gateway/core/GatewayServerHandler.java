@@ -3,9 +3,12 @@ package com.wss.bronze.gateway.core;
 import com.wss.bronze.gateway.core.client.HttpClient;
 import com.wss.bronze.gateway.core.config.ApplicationContextHolder;
 import com.wss.bronze.gateway.core.config.GatewayProperties;
+import com.wss.bronze.gateway.core.enums.LoadBalancerTypeEnums;
 import com.wss.bronze.gateway.core.filter.FilterChainFactory;
 import com.wss.bronze.gateway.core.filter.FilterException;
 import com.wss.bronze.gateway.core.loadbalancer.LoadBalancer;
+import com.wss.bronze.gateway.core.loadbalancer.RoundRobinLoadBalancer;
+import com.wss.bronze.gateway.core.loadbalancer.WeightedLoadBalancer;
 import com.wss.bronze.gateway.core.router.Router;
 import com.wss.bronze.gateway.core.utils.GwUtils;
 import io.netty.channel.ChannelHandlerContext;
@@ -23,7 +26,8 @@ public class GatewayServerHandler extends ChannelInboundHandlerAdapter {
 
     // 使用懒加载方式获取依赖
     private volatile Router router;
-    private LoadBalancer loadBalancer;
+    private LoadBalancer roundRobinLoadBalancer;
+    private LoadBalancer weightedLoadBalancer;
     private FilterChainFactory filterChainFactory;
     private HttpClient httpClient;
 
@@ -35,7 +39,8 @@ public class GatewayServerHandler extends ChannelInboundHandlerAdapter {
             synchronized (lock) {
                 if (router == null) {
                     router = ApplicationContextHolder.getBean(Router.class);
-                    loadBalancer = ApplicationContextHolder.getBean(LoadBalancer.class);
+                    roundRobinLoadBalancer = ApplicationContextHolder.getBean(RoundRobinLoadBalancer.class);
+                    weightedLoadBalancer = ApplicationContextHolder.getBean(WeightedLoadBalancer.class);
                     filterChainFactory = ApplicationContextHolder.getBean(FilterChainFactory.class);
                     httpClient = ApplicationContextHolder.getBean(HttpClient.class);
                 }
@@ -58,6 +63,7 @@ public class GatewayServerHandler extends ChannelInboundHandlerAdapter {
 
         boolean forwarded = false;
         try {
+            //执行过滤器
             try {
                 filterChainFactory.executePreFilters(context);
             }catch (FilterException e){
@@ -65,18 +71,27 @@ public class GatewayServerHandler extends ChannelInboundHandlerAdapter {
                 return;
             }
 
+            //路由选择
             GatewayProperties.RouteDefinition route = router.route(context);
             if (route == null) {
                 GwUtils.sendResponse(ctx, HttpResponseStatus.NOT_FOUND, "No route found", true);
                 return;
             }
 
-            GatewayProperties.Instance instance = loadBalancer.choose(route.getInstances());
+            // 负载均衡选择
+            GatewayProperties.Instance instance = null;
+            if(LoadBalancerTypeEnums.WEIGHTED_ROBIN.getKey().equals(route.getLoadBalancerType())){
+                instance = weightedLoadBalancer.choose(route.getInstances());
+            }else {
+                instance = roundRobinLoadBalancer.choose(route.getInstances());
+            }
+
             if (instance == null) {
                 GwUtils.sendResponse(ctx, HttpResponseStatus.SERVICE_UNAVAILABLE, "No available instance", true);
                 return;
             }
 
+            //转发请求到后端服务
             httpClient.forward(context, instance.getUrl());
             forwarded = true;
         } catch (Exception e) {

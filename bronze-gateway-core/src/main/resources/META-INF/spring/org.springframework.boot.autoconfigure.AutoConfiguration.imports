@@ -2,6 +2,7 @@ com.wss.bronze.gateway.core.client.HttpClient
 com.wss.bronze.gateway.core.config.ApplicationContextHolder
 com.wss.bronze.gateway.core.config.GatewayProperties
 com.wss.bronze.gateway.core.loadbalancer.RoundRobinLoadBalancer
+com.wss.bronze.gateway.core.loadbalancer.WeightedLoadBalancer
 com.wss.bronze.gateway.core.router.PropertiesRouter
 com.wss.bronze.gateway.core.GatewayServer
 com.wss.bronze.gateway.core.filter.FilterChainFactory
