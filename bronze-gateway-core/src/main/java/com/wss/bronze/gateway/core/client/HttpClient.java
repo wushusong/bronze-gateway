@@ -268,7 +268,7 @@ public class HttpClient implements DisposableBean {
         request.setUri(newUri);
 
         // 设置Host头
-        request.headers().set(HttpHeaderNames.HOST, uri.getHost());
+        request.headers().set(HttpHeaderNames.HOST, uri.getHost() + ":" + uri.getPort());
 
         // 禁用keep-alive
         HttpUtil.setKeepAlive(request, false);
