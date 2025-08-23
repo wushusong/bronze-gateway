@@ -146,6 +146,7 @@ public class HttpClient implements DisposableBean {
             FixedChannelPool pool = getOrCreatePool(host, port);
             pool.acquire().addListener((FutureListener<Channel>) acquireFuture -> {
                 if (!acquireFuture.isSuccess()) {
+                    //连接失败
                     log.error("Failed to acquire channel from pool for {}:{}", host, port, acquireFuture.cause());
                     handleRequestError(context, url, retryCount, resilienceFlag, circuitBreaker, fallbackHandler, serviceId, acquireFuture.cause());
                     return;
