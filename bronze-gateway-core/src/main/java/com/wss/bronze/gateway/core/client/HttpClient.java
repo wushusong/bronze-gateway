@@ -35,7 +35,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
@@ -80,10 +79,11 @@ public class HttpClient implements DisposableBean {
         // 增加等待队列大小
         this.maxPendingAcquires = properties.getMaxPendingAcquires() > 0 ? properties.getMaxPendingAcquires() : 20000;
 
-        // 增加Netty内存分配优化参数
-        System.setProperty("io.netty.allocator.type", "pooled");
-        System.setProperty("io.netty.allocator.numHeapArenas", "32");
-        System.setProperty("io.netty.allocator.numDirectArenas", "32");
+        // 新增内存分配优化配置
+        System.setProperty("io.netty.allocator.numHeapArenas", "64");
+        System.setProperty("io.netty.allocator.numDirectArenas", "64");
+        System.setProperty("io.netty.allocator.pageSize", "8192");
+        System.setProperty("io.netty.allocator.maxOrder", "10");
 
         log.info("HttpClient initialized with maxConnectionsPerHost: {}, maxPendingAcquires: {}, threadCount: {}",
                 maxConnectionsPerHost, maxPendingAcquires, threadCount);
@@ -95,19 +95,19 @@ public class HttpClient implements DisposableBean {
     public void forward(GatewayContext context, String url, boolean resilienceFlag,
                         String serviceId, CircuitBreakerManager circuitBreakerManager,
                         FallbackHandler fallbackHandler) {
-
-        CompletableFuture.runAsync(() -> {
-            try {
-                if (resilienceFlag && circuitBreakerManager != null) {
-                    executeWithCircuitBreaker(context, url, serviceId, circuitBreakerManager, fallbackHandler);
-                } else {
-                    executeRequest(context, url, 0, false, null, null, null);
-                }
-            } catch (Exception e) {
-                log.error("Failed to forward request to: {}", url, e);
-                handleError(context, e, resilienceFlag, serviceId, fallbackHandler);
+        try {
+            if (resilienceFlag && circuitBreakerManager != null) {
+                executeWithCircuitBreaker(context, url, serviceId, circuitBreakerManager, fallbackHandler);
+            } else {
+                executeRequest(context, url, 0, false, null, null, null);
             }
-        });
+        } catch (Exception e) {
+            log.error("Failed to forward request to: {}", url, e);
+            handleError(context, e, resilienceFlag, serviceId, fallbackHandler);
+        }
+//        CompletableFuture.runAsync(() -> {
+//
+//        });
     }
 
     /**
@@ -298,7 +298,7 @@ public class HttpClient implements DisposableBean {
         request.headers().set(HttpHeaderNames.HOST, uri.getHost() + ":" + uri.getPort());
 
         // 禁用keep-alive
-        HttpUtil.setKeepAlive(request, false);
+        HttpUtil.setKeepAlive(request, true);
 
         // 添加超时头
         request.headers().set("X-Request-Timeout",
@@ -312,34 +312,19 @@ public class HttpClient implements DisposableBean {
      */
     private String buildTargetUri(String originalUri, String targetUrl) {
         try {
-            URI original = new URI(originalUri);
             URI target = new URI(targetUrl);
-
-            // 提取路径部分
-            String path = original.getPath();
-            if (path != null && path.startsWith("/")) {
-                path = path.substring(1);
-            }
-            path = Arrays.stream(StringUtils.tokenizeToStringArray(path, "/"))
-                    .skip(1L)
-                    .collect(Collectors.joining("/"));
-
-            // 构建新的URI
+            // 简化处理逻辑，避免不必要的字符串操作
             StringBuilder newUri = new StringBuilder();
-            newUri.append(target.getScheme()).append("://");
-            newUri.append(target.getHost());
+            newUri.append(target.getScheme()).append("://")
+                    .append(target.getHost());
             if (target.getPort() > 0) {
                 newUri.append(":").append(target.getPort());
             }
-            newUri.append("/").append(path);
-
-            // 添加查询参数
-            if (original.getQuery() != null) {
-                newUri.append("?").append(original.getQuery());
-            }
-
+            newUri.append("/");
+            newUri.append(Arrays.stream(StringUtils.tokenizeToStringArray(originalUri, "/"))
+                    .skip(1L)
+                    .collect(Collectors.joining("/"))); // 直接使用原始URI路径
             return newUri.toString();
-
         } catch (URISyntaxException e) {
             log.error("Error building target URI", e);
             return targetUrl + "/" + originalUri;
@@ -355,6 +340,11 @@ public class HttpClient implements DisposableBean {
             Bootstrap bootstrap = createBootstrap(host, port);
             bootstrap.option(ChannelOption.SO_RCVBUF, properties.getSoRcvbuf());
             bootstrap.option(ChannelOption.SO_SNDBUF, properties.getSoSndbuf());
+
+            // 增加连接保活配置（新增以下参数）
+            bootstrap.option(ChannelOption.SO_KEEPALIVE, true)
+                    .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, properties.getConnectTimeoutMs()); // 缩短连接超时
+
             ChannelPoolHandler poolHandler = new ChannelPoolHandler() {
                 @Override
                 public void channelReleased(Channel ch) {
@@ -402,7 +392,7 @@ public class HttpClient implements DisposableBean {
                     bootstrap,
                     poolHandler,
                     ChannelHealthChecker.ACTIVE,
-                    FixedChannelPool.AcquireTimeoutAction.FAIL,
+                    FixedChannelPool.AcquireTimeoutAction.NEW,
                     connectTimeoutMs,
                     maxConnectionsPerHost,
                     maxPendingAcquires,

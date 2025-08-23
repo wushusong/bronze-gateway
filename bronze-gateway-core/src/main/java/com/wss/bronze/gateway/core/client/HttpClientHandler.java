@@ -56,7 +56,7 @@ public class HttpClientHandler extends SimpleChannelInboundHandler<FullHttpRespo
         if (gatewayContext != null) {
             try {
                 // 复制响应，因为原始响应可能会被释放
-                FullHttpResponse response = backendResponse.copy();
+                FullHttpResponse response = backendResponse.retain();
 
                 // 将后端服务的响应写回给原始客户端，并为写入添加超时保护
                 ChannelFuture writeFuture = gatewayContext.getCtx().writeAndFlush(response);
