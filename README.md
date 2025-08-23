@@ -39,7 +39,7 @@ springboot版本要求：2.7.18及以上
         <dependency>
             <groupId>io.github.wushusong</groupId>
             <artifactId>bronze-gateway-core</artifactId>
-            <version>1.0.3</version>
+            <version>1.0.4</version>
         </dependency>
 ````
 
@@ -123,3 +123,4 @@ gateway:
 
 ![img_5.png](doc/img_5.png)
 
+![img.png](doc/img_6.png)

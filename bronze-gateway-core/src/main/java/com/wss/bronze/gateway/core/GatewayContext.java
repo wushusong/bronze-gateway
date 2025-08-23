@@ -22,6 +22,7 @@ public class GatewayContext {
     private GatewayProperties.RouteDefinition route;
     private Map<String, Object> attributes = new HashMap<>();
     private boolean terminated = false;
+    private boolean forwarded = false;
 
     public GatewayContext(ChannelHandlerContext ctx, FullHttpRequest request) {
         this.ctx = ctx;
