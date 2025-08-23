@@ -27,9 +27,9 @@ public class GatewayProperties {
     //连接超时时间
     private int connectTimeoutMs = 5000;
     //每个主机的最大并发连接数（如果没有配置，使用合理默认值）
-    private int maxConnectionsPerHost = 64;
+    private int maxConnectionsPerHost = 500;
     //每个主机最大等待连接数（如果没有配置，使用合理默认值）
-    private int maxPendingAcquires = 10000;
+    private int maxPendingAcquires = 20000;
     //重试次数 -1不重试
     private int maxRetries = -1;
     //报文最大长度
