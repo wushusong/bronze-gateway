@@ -1,0 +1,68 @@
+# 高并发配置示例
+# 适用于2000+并发场景的配置
+
+gateway:
+  port: 9999
+  # 后端响应超时时间
+  backend-response-timeout-ms: 10000
+  # 客户端写入超时时间
+  client-write-timeout-ms: 5000
+  # 连接超时时间
+  connect-timeout-ms: 5000
+  # 每个主机的最大并发连接数 - 高并发场景建议500-1000
+  max-connections-per-host: 500
+  # 每个主机最大等待连接数 - 高并发场景建议20000-50000
+  max-pending-acquires: 20000
+  # 重试次数 -1不重试
+  max-retries: 2
+  # 报文最大长度
+  max-content-length: 1048576
+
+  # 熔断器配置
+  resilience:
+    # 失败率阈值百分比
+    failure-rate-threshold: 50
+    # 慢调用率阈值百分比
+    slow-call-rate-threshold: 50
+    # 慢调用持续时间阈值
+    slow-call-duration-threshold: 10
+    # 熔断器开启状态持续时间
+    wait-duration-in-open-state: 60
+    # 半开状态允许的调用次数
+    permitted-number-of-calls-in-half-open-state: 5
+    # 计算失败率所需的最小调用次数
+    minimum-number-of-calls: 10
+    # 滑动窗口大小
+    sliding-window-size: 5
+
+# 路由配置示例
+  routes:
+    - id: "user-service"
+      path: "/user"
+      load-balancer-type: "roundRobinLoadBalancer"
+      instances:
+        - service-id: "user-service-1"
+          url: "http://192.168.1.111:8089"
+          weight: 1
+          healthy: true
+        - service-id: "user-service-2"
+          url: "http://192.168.1.112:8089"
+          weight: 1
+          healthy: true
+
+# 系统级配置建议
+server:
+  # 增加服务器线程池大小
+  tomcat:
+    threads:
+      max: 800
+      min-spare: 100
+    max-connections: 8192
+    accept-count: 1000
+
+# JVM参数建议（在启动脚本中添加）:
+# -Xms4g -Xmx4g -XX:+UseG1GC -XX:MaxGCPauseMillis=200
+# -XX:+UnlockExperimentalVMOptions -XX:+UseZGC (如果使用Java 11+)
+# -XX:MaxDirectMemorySize=2g
+# -Dio.netty.leakDetection.level=disabled
+# -Dio.netty.recycler.maxCapacity=32 
