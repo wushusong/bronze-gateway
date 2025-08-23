@@ -67,6 +67,9 @@ public class HttpClient implements DisposableBean {
     private final int maxConnectionsPerHost;
     private final int maxPendingAcquires;
 
+    // URI缓存，避免重复解析
+    private final Map<String, URI> uriCache = new ConcurrentHashMap<>();
+
     public HttpClient() {
         this.properties = ApplicationContextHolder.getBean(GatewayProperties.class);
         // 根据CPU核心数优化EventLoopGroup线程数
@@ -105,9 +108,6 @@ public class HttpClient implements DisposableBean {
             log.error("Failed to forward request to: {}", url, e);
             handleError(context, e, resilienceFlag, serviceId, fallbackHandler);
         }
-//        CompletableFuture.runAsync(() -> {
-//
-//        });
     }
 
     /**
@@ -138,28 +138,26 @@ public class HttpClient implements DisposableBean {
      */
     private void executeRequest(GatewayContext context, String url, int retryCount, boolean resilienceFlag, CircuitBreaker circuitBreaker, FallbackHandler fallbackHandler, String serviceId) {
         try {
-            URI uri = new URI(url);
+            URI uri = getCachedURI(url);
             String host = uri.getHost();
             int port = getPort(uri);
-            String poolKey = host + ":" + port;
 
             // 从连接池获取连接
             FixedChannelPool pool = getOrCreatePool(host, port);
             pool.acquire().addListener((FutureListener<Channel>) acquireFuture -> {
                 if (!acquireFuture.isSuccess()) {
-                    log.error("Failed to acquire channel from pool: {}", poolKey, acquireFuture.cause());
+                    log.error("Failed to acquire channel from pool for {}:{}", host, port, acquireFuture.cause());
                     handleRequestError(context, url, retryCount, resilienceFlag, circuitBreaker, fallbackHandler, serviceId, acquireFuture.cause());
                     return;
                 }
                 Channel channel = acquireFuture.getNow();
-
-                // 在通道上存储连接池引用，用于后续释放
-                channel.attr(CHANNEL_POOL_KEY).set(pool);
-
-                // 存储上下文
-                channel.attr(GATEWAY_CONTEXT_KEY).set(context);
-
                 try {
+                    // 在通道上存储连接池引用，用于后续释放
+                    channel.attr(CHANNEL_POOL_KEY).set(pool);
+
+                    // 存储上下文
+                    channel.attr(GATEWAY_CONTEXT_KEY).set(context);
+
                     sendRequest(channel, context, url, uri);
                 } catch (Exception e) {
                     log.error("Failed to send request to: {}", url, e);
@@ -217,9 +215,11 @@ public class HttpClient implements DisposableBean {
         }
         if (retryCount < maxRetries) {
             log.info("Retrying request to {} (attempt {}/{})", url, retryCount + 1, maxRetries);
-            // 延迟重试，避免立即重试
-            group.schedule(() -> executeRequest(context, url, retryCount + 1, resilienceFlag, circuitBreaker, fallbackHandler, serviceId),
-                    (retryCount + 1) * 1000L, TimeUnit.MILLISECONDS);
+            // 指数退避重试，避免立即重试
+            long delay = Math.min(1000L * (1L << retryCount), 10000L); // 最大10秒延迟
+            group.schedule(() -> executeRequest(context, url, retryCount + 1, resilienceFlag,
+                            circuitBreaker, fallbackHandler, serviceId),
+                    delay, TimeUnit.MILLISECONDS);
         } else {
             log.error("Max retries exceeded for request to: {}", url);
             if (!resilienceFlag) {
@@ -270,8 +270,15 @@ public class HttpClient implements DisposableBean {
      * 安全释放连接回连接池
      */
     private void releaseChannel(Channel channel) {
+        if (channel == null) {
+            return;
+        }
+
         try {
-            FixedChannelPool pool = channel.attr(CHANNEL_POOL_KEY).get();
+            // 清理通道属性
+            channel.attr(GATEWAY_CONTEXT_KEY).set(null);
+
+            FixedChannelPool pool = channel.attr(CHANNEL_POOL_KEY).getAndSet(null);
             if (pool != null && channel.isActive()) {
                 pool.release(channel);
             } else {
@@ -279,7 +286,11 @@ public class HttpClient implements DisposableBean {
             }
         } catch (Exception e) {
             log.warn("Failed to release channel to pool, closing instead", e);
-            channel.close();
+            try {
+                channel.close();
+            } catch (Exception closeException) {
+                log.warn("Failed to close channel", closeException);
+            }
         }
     }
 
@@ -308,11 +319,24 @@ public class HttpClient implements DisposableBean {
     }
 
     /**
+     * 获取缓存的URI对象
+     */
+    private URI getCachedURI(String url) throws URISyntaxException {
+        return uriCache.computeIfAbsent(url, key -> {
+            try {
+                return new URI(key);
+            } catch (URISyntaxException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    /**
      * 构建目标URI
      */
     private String buildTargetUri(String originalUri, String targetUrl) {
         try {
-            URI target = new URI(targetUrl);
+            URI target = getCachedURI(targetUrl);
             // 简化处理逻辑，避免不必要的字符串操作
             StringBuilder newUri = new StringBuilder();
             newUri.append(target.getScheme()).append("://")
@@ -344,7 +368,7 @@ public class HttpClient implements DisposableBean {
             // 增加连接保活配置（新增以下参数）
             bootstrap.option(ChannelOption.SO_KEEPALIVE, true)
                     .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, properties.getConnectTimeoutMs()); // 缩短连接超时
-
+//            bootstrap.option(ChannelOption.TCP_NODELAY, true);
             ChannelPoolHandler poolHandler = new ChannelPoolHandler() {
                 @Override
                 public void channelReleased(Channel ch) {
@@ -460,27 +484,29 @@ public class HttpClient implements DisposableBean {
      * 关闭客户端
      */
     public void shutdown() {
-        try {
-            log.info("Shutting down HttpClient with {} pools", channelPoolMap.size());
-            // 先关闭连接池
-            for (Map.Entry<String, FixedChannelPool> entry : channelPoolMap.entrySet()) {
-                try {
-                    FixedChannelPool pool = entry.getValue();
-                    log.info("Closing pool {}: acquired={}",
-                            entry.getKey(),
-                            pool.acquiredChannelCount());
-                    pool.close();
-                } catch (Exception e) {
-                    log.warn("Error closing channel pool: {}", entry.getKey(), e);
-                }
+        log.info("Shutting down HttpClient with {} pools", channelPoolMap.size());
+
+        // 先关闭连接池
+        channelPoolMap.values().parallelStream().forEach(pool -> {
+            try {
+                pool.close();
+            } catch (Exception e) {
+                log.warn("Error closing channel pool", e);
             }
-            channelPoolMap.clear();
-            // 关闭EventLoopGroup
-            if (group != null && !group.isShutdown()) {
+        });
+        channelPoolMap.clear();
+
+        // 清理URI缓存
+//        uriCache.clear();
+
+        // 关闭EventLoopGroup
+        if (group != null && !group.isShutdown()) {
+            try {
                 group.shutdownGracefully(0, 5, TimeUnit.SECONDS).sync();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.warn("Interrupted while shutting down EventLoopGroup", e);
             }
-        } catch (Exception e) {
-            log.error("Error during shutdown", e);
         }
     }
 
