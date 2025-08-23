@@ -10,24 +10,30 @@ gateway:
   backendResponseTimeoutMs: 6000 # 后端响应超时时间
   clientWriteTimeoutMs: 6000 # 客户端写入超时时间
   connectTimeoutMs: 6000 # 连接超时时间
+  maxConnectionsPerHost: 10000 # 每个主机的最大并发连接数（如果没有配置，使用合理默认值）
+  maxPendingAcquires: 10000 # 每个主机最大等待连接数（如果没有配置，使用合理默认值）
   routes:
-    - id: user-service # 服务名称，每个服务唯一
-      path: /user/ # 服务访问路径，注意，前后都要斜杠，不能有*号
-      instances:
-        - serviceId: user-service-1 # 服务实例名称，同一个服务下，不同实例，serviceId要求唯一
-          url: http://localhost:8081 # 服务地址，到端口一层即可
-          weight: 1 # 权重，目前系统默认轮询策略
-          healthy: true # 服务健康状态，预留，目前默认为true
+    - id: wss-test-gw # 服务名称，每个服务唯一
+      path: /wss-test-gw/ # 服务访问路径，注意，前后都要斜杠，不能有*号
+      instances: # 服务实例
+        - serviceId: wss-test-gw-1 # 模拟服务2 该服务是正常服务
+          url: http://192.168.1.111:8089
+          weight: 1
+          healthy: true
+        - serviceId: wss-test-gw-2 # 模拟服务2 该服务百分百失败
+          url: http://192.168.1.111:8089
+          weight: 1
+          healthy: true
     - id: jm-cloud-gw
       path: /jm-cloud-gw/ # 注意，前后都要斜杠，不能有*号
-      loadBalancerType: weightedLoadBalancer # 负载均衡类型 roundRobinLoadBalancer轮询 / WeightedLoadBalancer权重
+      loadBalancerType: roundRobinLoadBalancer # 轮询策略
       instances:
-        - serviceId: jm-cloud-gw-1
+        - serviceId: jm-cloud-gw-1 # 模拟服务2 该服务是正常服务
           url: http://192.168.1.240:23500
           weight: 1
           healthy: true
-        - serviceId: jm-cloud-gw-2
-          url: http://192.168.1.111:23500
+        - serviceId: jm-cloud-gw-2 # 模拟服务2 该服务百分百失败
+          url: http://192.168.1.240:23500
           weight: 1
           healthy: true
 #  filters:
@@ -47,3 +53,8 @@ gateway:
     permittedNumberOfCallsInHalfOpenState: 5 # 半开状态允许的调用次数
     minimumNumberOfCalls: 2 # 计算失败率所需的最小调用次数
     slidingWindowSize: 5 # 滑动窗口大小
+
+# 日志配置
+logging:
+  level:
+    root: debug
