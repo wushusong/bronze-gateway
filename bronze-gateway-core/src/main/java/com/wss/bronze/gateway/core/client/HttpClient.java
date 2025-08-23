@@ -22,6 +22,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.http.*;
 import io.netty.util.AttributeKey;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.FutureListener;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.DisposableBean;
@@ -70,14 +71,19 @@ public class HttpClient implements DisposableBean {
     public HttpClient() {
         this.properties = ApplicationContextHolder.getBean(GatewayProperties.class);
         // 根据CPU核心数优化EventLoopGroup线程数
-        int threadCount = Math.max(Runtime.getRuntime().availableProcessors() * 2, 16);
-        this.group = new NioEventLoopGroup(threadCount);
+        int threadCount = Math.max(Runtime.getRuntime().availableProcessors() * 4, properties.getCpuMaxThreadCount());
+        this.group = new NioEventLoopGroup(threadCount, new DefaultThreadFactory("Gateway-Worker", true));
         this.connectTimeoutMs = properties.getConnectTimeoutMs() > 0 ? properties.getConnectTimeoutMs() : 5000;
         this.maxRetries = properties.getMaxRetries() > 0 ? properties.getMaxRetries() : -1;
         // 大幅增加每个主机的最大连接数，支持高并发
         this.maxConnectionsPerHost = properties.getMaxConnectionsPerHost() > 0 ? properties.getMaxConnectionsPerHost() : 500;
         // 增加等待队列大小
         this.maxPendingAcquires = properties.getMaxPendingAcquires() > 0 ? properties.getMaxPendingAcquires() : 20000;
+
+        // 增加Netty内存分配优化参数
+        System.setProperty("io.netty.allocator.type", "pooled");
+        System.setProperty("io.netty.allocator.numHeapArenas", "32");
+        System.setProperty("io.netty.allocator.numDirectArenas", "32");
 
         log.info("HttpClient initialized with maxConnectionsPerHost: {}, maxPendingAcquires: {}, threadCount: {}",
                 maxConnectionsPerHost, maxPendingAcquires, threadCount);
@@ -347,6 +353,8 @@ public class HttpClient implements DisposableBean {
         String key = host + ":" + port;
         return channelPoolMap.computeIfAbsent(key, k -> {
             Bootstrap bootstrap = createBootstrap(host, port);
+            bootstrap.option(ChannelOption.SO_RCVBUF, properties.getSoRcvbuf());
+            bootstrap.option(ChannelOption.SO_SNDBUF, properties.getSoSndbuf());
             ChannelPoolHandler poolHandler = new ChannelPoolHandler() {
                 @Override
                 public void channelReleased(Channel ch) {
@@ -398,7 +406,9 @@ public class HttpClient implements DisposableBean {
                     connectTimeoutMs,
                     maxConnectionsPerHost,
                     maxPendingAcquires,
-                    true
+                    true,
+                    //关闭公平锁，提升并发性能
+                    false
             );
         });
     }

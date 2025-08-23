@@ -35,6 +35,14 @@ public class GatewayProperties {
     //报文最大长度
     private int maxContentLength = 1024 * 1024;
 
+    //最大接收缓冲区
+    private int soRcvbuf = 128 * 1024;
+    //最大发送缓冲区
+    private int soSndbuf = 128 * 1024;
+
+    //cpu核数
+    private int cpuMaxThreadCount = 64;
+
     private Resilience resilience = new Resilience();
     private List<RouteDefinition> routes = new ArrayList<>();
     private List<FilterDefinition> filters = new ArrayList<>();

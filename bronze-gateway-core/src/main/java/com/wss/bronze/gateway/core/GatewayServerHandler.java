@@ -57,71 +57,77 @@ public class GatewayServerHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        // 确保依赖已初始化
-        ensureDependenciesInitialized();
+        //可写状态检查
+        if(ctx.channel().isWritable()){
+            // 确保依赖已初始化
+            ensureDependenciesInitialized();
 
-        if (!(msg instanceof FullHttpRequest)) {
-            super.channelRead(ctx, msg);
-            return;
-        }
+            if (!(msg instanceof FullHttpRequest)) {
+                super.channelRead(ctx, msg);
+                return;
+            }
 
-        FullHttpRequest fullRequest = (FullHttpRequest) msg;
-        GatewayContext context = new GatewayContext(ctx, fullRequest);
+            FullHttpRequest fullRequest = (FullHttpRequest) msg;
+            GatewayContext context = new GatewayContext(ctx, fullRequest);
 
-        boolean forwarded = false;
-        try {
-            //执行过滤器
+            boolean forwarded = false;
             try {
-                filterChainFactory.executePreFilters(context);
-            }catch (FilterException e){
-                GwUtils.sendResponse(ctx, e.getStatus(), e.getMessage(), true);
-                return;
-            }
-
-            //路由选择
-            GatewayProperties.RouteDefinition route = router.route(context);
-            if (route == null) {
-                GwUtils.sendResponse(ctx, HttpResponseStatus.NOT_FOUND, "No route found", true);
-                return;
-            }
-
-            // 负载均衡选择
-            GatewayProperties.Instance instance = null;
-            if(LoadBalancerTypeEnums.WEIGHTED_ROBIN.getKey().equals(route.getLoadBalancerType())){
-                instance = weightedLoadBalancer.choose(route.getInstances(),route.getId());
-            }else {
-                instance = roundRobinLoadBalancer.choose(route.getInstances(),route.getId());
-            }
-
-            if (instance == null) {
-                GwUtils.sendResponse(ctx, HttpResponseStatus.SERVICE_UNAVAILABLE, "No available instance", true);
-                return;
-            }
-
-            //转发请求到后端服务
-            try {
-                if(null == circuitBreakerDecorator){
-                    httpClient.forward(context, instance.getUrl(),false,instance.getServiceId(),null,null);
-                }else {
-                    //使用熔断器转发请求到后端服务
-                    circuitBreakerDecorator.executeWithCircuitBreaker(
-                            context,
-                            instance.getServiceId(),
-                            instance.getUrl()
-                    );
+                //执行过滤器
+                try {
+                    filterChainFactory.executePreFilters(context);
+                }catch (FilterException e){
+                    GwUtils.sendResponse(ctx, e.getStatus(), e.getMessage(), true);
+                    return;
                 }
-            } catch (Exception e) {
-                GwUtils.sendResponse(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Service request exception: " + e.getMessage(), true);
-            }
 
-            forwarded = true;
-        } catch (Exception e) {
-            log.error("Gateway process error", e);
-            GwUtils.sendResponse(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Gateway error: " + e.getMessage(), true);
-        } finally {
-            if (!forwarded) {
-                ReferenceCountUtil.release(fullRequest);
+                //路由选择
+                GatewayProperties.RouteDefinition route = router.route(context);
+                if (route == null) {
+                    GwUtils.sendResponse(ctx, HttpResponseStatus.NOT_FOUND, "No route found", true);
+                    return;
+                }
+
+                // 负载均衡选择
+                GatewayProperties.Instance instance = null;
+                if(LoadBalancerTypeEnums.WEIGHTED_ROBIN.getKey().equals(route.getLoadBalancerType())){
+                    instance = weightedLoadBalancer.choose(route.getInstances(),route.getId());
+                }else {
+                    instance = roundRobinLoadBalancer.choose(route.getInstances(),route.getId());
+                }
+
+                if (instance == null) {
+                    GwUtils.sendResponse(ctx, HttpResponseStatus.SERVICE_UNAVAILABLE, "No available instance", true);
+                    return;
+                }
+
+                //转发请求到后端服务
+                try {
+                    if(null == circuitBreakerDecorator){
+                        httpClient.forward(context, instance.getUrl(),false,instance.getServiceId(),null,null);
+                    }else {
+                        //使用熔断器转发请求到后端服务
+                        circuitBreakerDecorator.executeWithCircuitBreaker(
+                                context,
+                                instance.getServiceId(),
+                                instance.getUrl()
+                        );
+                    }
+                } catch (Exception e) {
+                    GwUtils.sendResponse(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Service request exception: " + e.getMessage(), true);
+                }
+
+                forwarded = true;
+            } catch (Exception e) {
+                log.error("Gateway process error", e);
+                GwUtils.sendResponse(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, "Gateway error: " + e.getMessage(), true);
+            } finally {
+                if (!forwarded) {
+                    ReferenceCountUtil.release(fullRequest);
+                }
             }
+        }else {
+            GwUtils.sendResponse(ctx, HttpResponseStatus.SERVICE_UNAVAILABLE, "Service busy", true);
+            ReferenceCountUtil.release(msg);
         }
     }
 
