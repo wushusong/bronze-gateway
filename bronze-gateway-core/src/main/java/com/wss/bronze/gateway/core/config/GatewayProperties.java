@@ -40,6 +40,12 @@ public class GatewayProperties {
     //最大发送缓冲区
     private int soSndbuf = 128 * 1024;
 
+    private int soBacklog = 128;
+    //worker线程数 默认使用Netty推荐的线程数
+    private int WorkerThreads = 0;
+
+
+
     //cpu核数
     private int cpuMaxThreadCount = 64;
 
