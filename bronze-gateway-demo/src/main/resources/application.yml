@@ -10,20 +10,20 @@ gateway:
   backendResponseTimeoutMs: 6000 # 后端响应超时时间
   clientWriteTimeoutMs: 6000 # 客户端写入超时时间
   connectTimeoutMs: 6000 # 连接超时时间
-  maxConnectionsPerHost: 10000 # 每个主机的最大并发连接数（如果没有配置，使用合理默认值）
-  maxPendingAcquires: 10000 # 每个主机最大等待连接数（如果没有配置，使用合理默认值）
+  maxConnectionsPerHost: 2000 # 每个主机的最大并发连接数（如果没有配置，使用合理默认值）
+  maxPendingAcquires: 20000 # 每个主机最大等待连接数（如果没有配置，使用合理默认值）
   routes:
     - id: wss-test-gw # 服务名称，每个服务唯一
       path: /wss-test-gw/ # 服务访问路径，注意，前后都要斜杠，不能有*号
       instances: # 服务实例
         - serviceId: wss-test-gw-1 # 模拟服务2 该服务是正常服务
-          url: http://192.168.1.111:8089
+          url: http://192.168.1.239:8089
           weight: 1
           healthy: true
-        - serviceId: wss-test-gw-2 # 模拟服务2 该服务百分百失败
-          url: http://192.168.1.111:8089
-          weight: 1
-          healthy: true
+#        - serviceId: wss-test-gw-2 # 模拟服务2 该服务百分百失败
+#          url: http://192.168.1.111:8089
+#          weight: 1
+#          healthy: true
     - id: jm-cloud-gw
       path: /jm-cloud-gw/ # 注意，前后都要斜杠，不能有*号
       loadBalancerType: roundRobinLoadBalancer # 轮询策略
