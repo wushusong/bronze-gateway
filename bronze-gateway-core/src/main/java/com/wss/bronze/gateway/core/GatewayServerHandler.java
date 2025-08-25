@@ -261,7 +261,7 @@ public class GatewayServerHandler extends ChannelInboundHandlerAdapter {
      */
     private boolean isIpInRange(String ip, String range) {
         // 简化实现，实际可以支持CIDR格式等
-        return ip.startsWith(range) || range.equals("*") || ip.equals(range);
+        return ip.startsWith(range) || "*".equals(range) || ip.equals(range);
     }
 
 
@@ -351,7 +351,8 @@ public class GatewayServerHandler extends ChannelInboundHandlerAdapter {
      */
     private void forwardRequest(GatewayContext context, GatewayProperties.Instance instance, long requestId) {
         try {
-            context.setForwarded(true); // 标记请求已转发
+            // 标记请求已转发
+            context.setForwarded(true);
 
             if (circuitBreakerDecorator == null) {
                 httpClient.forward(context, instance.getUrl(), false, instance.getServiceId(), null, null);

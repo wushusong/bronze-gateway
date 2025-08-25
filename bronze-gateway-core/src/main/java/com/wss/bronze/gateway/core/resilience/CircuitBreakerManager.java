@@ -22,16 +22,26 @@ public class CircuitBreakerManager {
     public CircuitBreakerManager(GatewayProperties gatewayProperties) {
         // 创建默认的熔断器配置
         CircuitBreakerConfig circuitBreakerConfig = CircuitBreakerConfig.custom()
-                .failureRateThreshold(gatewayProperties.getResilience().getFailureRateThreshold()) // 失败率阈值百分比
-                .slowCallRateThreshold(gatewayProperties.getResilience().getSlowCallRateThreshold()) // 慢调用率阈值百分比
-                .slowCallDurationThreshold(Duration.ofSeconds(gatewayProperties.getResilience().getSlowCallRateThreshold())) // 慢调用持续时间阈值
-                .waitDurationInOpenState(Duration.ofSeconds(gatewayProperties.getResilience().getWaitDurationInOpenState())) // 熔断器开启状态持续时间
-                .permittedNumberOfCallsInHalfOpenState(gatewayProperties.getResilience().getPermittedNumberOfCallsInHalfOpenState()) // 半开状态允许的调用次数
-                .minimumNumberOfCalls(gatewayProperties.getResilience().getMinimumNumberOfCalls()) // 计算失败率所需的最小调用次数
-                .slidingWindowType(CircuitBreakerConfig.SlidingWindowType.TIME_BASED) // 滑动窗口类型
-                .slidingWindowSize(gatewayProperties.getResilience().getSlidingWindowSize()) // 滑动窗口大小
-                .recordExceptions(Exception.class) // 记录哪些异常
-                .ignoreExceptions() // 忽略哪些异常
+                // 失败率阈值百分比
+                .failureRateThreshold(gatewayProperties.getResilience().getFailureRateThreshold())
+                // 慢调用率阈值百分比
+                .slowCallRateThreshold(gatewayProperties.getResilience().getSlowCallRateThreshold())
+                // 慢调用持续时间阈值
+                .slowCallDurationThreshold(Duration.ofSeconds(gatewayProperties.getResilience().getSlowCallRateThreshold()))
+                // 熔断器开启状态持续时间
+                .waitDurationInOpenState(Duration.ofSeconds(gatewayProperties.getResilience().getWaitDurationInOpenState()))
+                // 半开状态允许的调用次数
+                .permittedNumberOfCallsInHalfOpenState(gatewayProperties.getResilience().getPermittedNumberOfCallsInHalfOpenState())
+                // 计算失败率所需的最小调用次数
+                .minimumNumberOfCalls(gatewayProperties.getResilience().getMinimumNumberOfCalls())
+                // 滑动窗口类型
+                .slidingWindowType(CircuitBreakerConfig.SlidingWindowType.TIME_BASED)
+                // 滑动窗口大小
+                .slidingWindowSize(gatewayProperties.getResilience().getSlidingWindowSize())
+                // 记录哪些异常
+                .recordExceptions(Exception.class)
+                // 忽略哪些异常
+                .ignoreExceptions()
                 .build();
 
         this.circuitBreakerRegistry = CircuitBreakerRegistry.of(circuitBreakerConfig);

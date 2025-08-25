@@ -217,7 +217,8 @@ public class HttpClient implements DisposableBean {
         if (retryCount < maxRetries) {
             log.info("Retrying request to {} (attempt {}/{})", url, retryCount + 1, maxRetries);
             // 指数退避重试，避免立即重试
-            long delay = Math.min(1000L * (1L << retryCount), 10000L); // 最大10秒延迟
+            // 最大10秒延迟
+            long delay = Math.min(1000L * (1L << retryCount), 10000L);
             group.schedule(() -> executeRequest(context, url, retryCount + 1, resilienceFlag,
                             circuitBreaker, fallbackHandler, serviceId),
                     delay, TimeUnit.MILLISECONDS);
@@ -348,7 +349,8 @@ public class HttpClient implements DisposableBean {
             newUri.append("/");
             newUri.append(Arrays.stream(StringUtils.tokenizeToStringArray(originalUri, "/"))
                     .skip(1L)
-                    .collect(Collectors.joining("/"))); // 直接使用原始URI路径
+                    // 直接使用原始URI路径
+                    .collect(Collectors.joining("/")));
             return newUri.toString();
         } catch (URISyntaxException e) {
             log.error("Error building target URI", e);
@@ -374,8 +376,8 @@ public class HttpClient implements DisposableBean {
                 @Override
                 public void channelReleased(Channel ch) {
                     // 连接释放时的清理工作
-                    ch.attr(GATEWAY_CONTEXT_KEY).remove();
-                    ch.attr(CHANNEL_POOL_KEY).remove();
+                    ch.attr(GATEWAY_CONTEXT_KEY).set(null);
+                    ch.attr(CHANNEL_POOL_KEY).set(null);
                 }
 
                 @Override

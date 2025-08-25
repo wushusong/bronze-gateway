@@ -18,7 +18,8 @@ import java.util.concurrent.TimeUnit;
 public class HttpClientIdleStateHandler extends IdleStateHandler {
 
     public HttpClientIdleStateHandler() {
-        super(0, 0, 30, TimeUnit.SECONDS); // 30秒读写空闲检测
+        // 30秒读写空闲检测
+        super(0, 0, 30, TimeUnit.SECONDS);
     }
 
     @Override

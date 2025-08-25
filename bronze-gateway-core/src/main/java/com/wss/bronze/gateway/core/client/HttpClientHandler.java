@@ -41,7 +41,7 @@ public class HttpClientHandler extends SimpleChannelInboundHandler<FullHttpRespo
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         // 使用更高效的超时处理，避免创建不必要的定时任务
         ScheduledFuture<?> timeoutFuture = ctx.executor().schedule(() -> {
-            GatewayContext gatewayContext = ctx.channel().attr(HttpClient.GATEWAY_CONTEXT_KEY).getAndRemove();
+            GatewayContext gatewayContext = ctx.channel().attr(HttpClient.GATEWAY_CONTEXT_KEY).getAndSet(null);
             if (gatewayContext != null) {
                 log.warn("Backend response timeout ({} ms)", BACKEND_RESPONSE_TIMEOUT_MS);
                 GwUtils.sendError(gatewayContext, "Upstream response timeout");
@@ -59,7 +59,7 @@ public class HttpClientHandler extends SimpleChannelInboundHandler<FullHttpRespo
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpResponse backendResponse) throws Exception {
         // 获取并移除网关上下文，防止重复使用
-        GatewayContext gatewayContext = ctx.channel().attr(HttpClient.GATEWAY_CONTEXT_KEY).getAndRemove();
+        GatewayContext gatewayContext = ctx.channel().attr(HttpClient.GATEWAY_CONTEXT_KEY).getAndSet(null);
 
         // 取消后端响应超时定时器，避免资源泄露
         cancelTimeout(ctx, BACKEND_TIMEOUT_FUTURE_KEY);
@@ -111,7 +111,7 @@ public class HttpClientHandler extends SimpleChannelInboundHandler<FullHttpRespo
         cleanupAllTimeouts(ctx);
 
         // 获取网关上下文并发送错误响应
-        GatewayContext gatewayContext = ctx.channel().attr(HttpClient.GATEWAY_CONTEXT_KEY).getAndRemove();
+        GatewayContext gatewayContext = ctx.channel().attr(HttpClient.GATEWAY_CONTEXT_KEY).getAndSet(null);
         if (gatewayContext != null) {
             GwUtils.sendError(gatewayContext, cause.getMessage());
             safeCloseClientConnection(gatewayContext);
@@ -127,7 +127,7 @@ public class HttpClientHandler extends SimpleChannelInboundHandler<FullHttpRespo
         cleanupAllTimeouts(ctx);
 
         // 确保网关上下文被清理
-        GatewayContext gatewayContext = ctx.channel().attr(HttpClient.GATEWAY_CONTEXT_KEY).getAndRemove();
+        GatewayContext gatewayContext = ctx.channel().attr(HttpClient.GATEWAY_CONTEXT_KEY).getAndSet(null);
         if (gatewayContext != null) {
             safeCloseClientConnection(gatewayContext);
         }
@@ -142,7 +142,7 @@ public class HttpClientHandler extends SimpleChannelInboundHandler<FullHttpRespo
         ScheduledFuture<?> writeTimeout = ctx.executor().schedule(() -> {
             if (!writeFuture.isDone()) {
                 log.warn("Client write timeout ({} ms)", CLIENT_WRITE_TIMEOUT_MS);
-                GatewayContext gc = ctx.channel().attr(HttpClient.GATEWAY_CONTEXT_KEY).getAndRemove();
+                GatewayContext gc = ctx.channel().attr(HttpClient.GATEWAY_CONTEXT_KEY).getAndSet(null);
                 if (gc != null) {
                     GwUtils.sendError(gc, "Downstream write timeout");
                     safeCloseClientConnection(gc);
@@ -191,7 +191,7 @@ public class HttpClientHandler extends SimpleChannelInboundHandler<FullHttpRespo
     private void releaseChannelToPool(ChannelHandlerContext ctx) {
         try {
             // 获取连接池并释放连接
-            FixedChannelPool pool = ctx.channel().attr(HttpClient.CHANNEL_POOL_KEY).getAndRemove();
+            FixedChannelPool pool = ctx.channel().attr(HttpClient.CHANNEL_POOL_KEY).getAndSet(null);
             if (pool != null && ctx.channel().isActive()) {
                 pool.release(ctx.channel());
             } else {
