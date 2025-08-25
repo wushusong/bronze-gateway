@@ -65,4 +65,5 @@ gateway:
 # 日志配置
 logging:
   level:
-    root: info
+    root: debug
+    org.springframework.boot.autoconfigure: info
