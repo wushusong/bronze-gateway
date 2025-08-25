@@ -65,4 +65,4 @@ gateway:
 # 日志配置
 logging:
   level:
-    root: debug
+    root: info
