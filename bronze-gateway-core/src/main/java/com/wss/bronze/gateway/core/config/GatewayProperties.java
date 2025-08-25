@@ -44,8 +44,6 @@ public class GatewayProperties {
     //worker线程数 默认使用Netty推荐的线程数
     private int WorkerThreads = 0;
 
-
-
     //cpu核数
     private int cpuMaxThreadCount = 64;
 
@@ -61,6 +59,10 @@ public class GatewayProperties {
         private String path;
         //负载均衡类型 roundRobinLoadBalancer轮询 / WeightedLoadBalancer权重
         private String loadBalancerType = LoadBalancerTypeEnums.ROUND_ROBIN.getKey();
+
+        //灰度发布配置
+        private GrayReleaseConfig grayReleaseConfig = null;
+
         //过滤器
         private List<FilterDefinition> filters = new ArrayList<>();
         //服务实例
@@ -84,6 +86,64 @@ public class GatewayProperties {
         //权重，目前系统默认轮询策略
         private int weight = 1;
         private boolean healthy = true;
+        // 是否为灰度实例
+        private Boolean gray = false;
+    }
+
+    /**
+     * 灰度发布配置
+     */
+    @Data
+    public static class GrayReleaseConfig {
+        private boolean enabled = false;
+
+        // 基于请求头的灰度策略
+        private HeaderBased headerBased;
+
+        // 基于用户ID的灰度策略
+        private UserIdBased userIdBased;
+
+        // 基于IP的灰度策略
+        private IpBased ipBased;
+
+        // 基于百分比的灰度策略
+        private PercentageBased percentageBased;
+
+
+        /**
+         * 请求头
+         */
+        @Data
+        public static class HeaderBased {
+            private String headerName;
+            private List<String> headerValues;
+        }
+
+        /**
+         * 用户id
+         */
+        @Data
+        public static class UserIdBased {
+            private List<String> userIds;
+            //百分比
+            private int percentage;
+        }
+
+        /**
+         * ip
+         */
+        @Data
+        public static class IpBased {
+            private List<String> ipRanges;
+        }
+
+        /**
+         * 百分比
+         */
+        @Data
+        public static class PercentageBased {
+            private int percentage;
+        }
     }
 
     @Data

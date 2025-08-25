@@ -19,6 +19,8 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.util.ReferenceCountUtil;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 
@@ -53,8 +55,7 @@ public class GatewayServerHandler extends ChannelInboundHandlerAdapter {
     private final AtomicLong errorCounter = new AtomicLong(0);
 
     // 负载均衡器缓存，避免重复获取
-    private volatile LoadBalancer cachedLoadBalancer;
-    private volatile String cachedLoadBalancerType;
+    private final Map<String,LoadBalancer> cachedLoadBalancerMap = new java.util.HashMap<>();
 
     /**
      * 高性能依赖初始化
@@ -138,8 +139,8 @@ public class GatewayServerHandler extends ChannelInboundHandlerAdapter {
                 return;
             }
 
-            // 负载均衡选择
-            GatewayProperties.Instance instance = chooseInstance(route);
+            // 负载均衡选择 + 灰度配置
+            GatewayProperties.Instance instance = chooseInstance(context,route);
             if (instance == null) {
                 handleNoInstanceAvailable(ctx, requestId);
                 return;
@@ -161,23 +162,188 @@ public class GatewayServerHandler extends ChannelInboundHandlerAdapter {
     }
 
     /**
-     * 选择服务实例
+     * 基于负载均衡器选择实例
      */
-    private GatewayProperties.Instance chooseInstance(GatewayProperties.RouteDefinition route) {
+    private GatewayProperties.Instance chooseInstanceByLoadBalancer(GatewayProperties.RouteDefinition route) {
         String loadBalancerType = route.getLoadBalancerType();
+        LoadBalancer loadBalancer = getLoadBalancer(loadBalancerType);
+        return loadBalancer.choose(route.getInstances(), route.getId());
+    }
 
-        // 缓存负载均衡器以提高性能
-        if (!loadBalancerType.equals(cachedLoadBalancerType)) {
-            synchronized (this) {
-                if (!loadBalancerType.equals(cachedLoadBalancerType)) {
-                    cachedLoadBalancer = LoadBalancerTypeEnums.WEIGHTED_ROBIN.getKey().equals(loadBalancerType) ?
-                            weightedLoadBalancer : roundRobinLoadBalancer;
-                    cachedLoadBalancerType = loadBalancerType;
+    /**
+     * 判断请求是否符合灰度条件
+     */
+    private boolean isInGrayGroup(GatewayContext context, GatewayProperties.GrayReleaseConfig grayReleaseConfig) {
+        // 1. 基于请求头的灰度策略
+        if (grayReleaseConfig.getHeaderBased() != null) {
+            GatewayProperties.GrayReleaseConfig.HeaderBased headerBased = grayReleaseConfig.getHeaderBased();
+            String headerValue = context.getRequest().headers().get(headerBased.getHeaderName());
+            if (headerValue != null && headerBased.getHeaderValues().contains(headerValue)) {
+                return true;
+            }
+        }
+
+        // 2. 基于用户ID的灰度策略
+        if (grayReleaseConfig.getUserIdBased() != null) {
+            GatewayProperties.GrayReleaseConfig.UserIdBased userIdBased = grayReleaseConfig.getUserIdBased();
+            String userId = getUserIdFromContext(context);
+            if (userId != null) {
+                // 基于用户ID哈希值进行流量分配
+                int hash = userId.hashCode();
+                int percentage = Math.abs(hash) % 100;
+                if (percentage < userIdBased.getPercentage()) {
+                    return true;
                 }
             }
         }
 
-        return cachedLoadBalancer.choose(route.getInstances(), route.getId());
+        // 3. 基于IP的灰度策略
+        if (grayReleaseConfig.getIpBased() != null) {
+            GatewayProperties.GrayReleaseConfig.IpBased ipBased = grayReleaseConfig.getIpBased();
+            String clientIp = getClientIp(context);
+            if (clientIp != null && ipBased.getIpRanges().stream().anyMatch(range -> isIpInRange(clientIp, range))) {
+                return true;
+            }
+        }
+
+        // 4. 基于百分比的随机灰度策略
+        if (grayReleaseConfig.getPercentageBased() != null) {
+            GatewayProperties.GrayReleaseConfig.PercentageBased percentageBased = grayReleaseConfig.getPercentageBased();
+            // 使用请求ID或其他唯一标识进行哈希，确保同一请求的一致性
+            String requestId = context.getRequest().headers().get("request-id", String.valueOf(System.nanoTime()));
+            int hash = requestId.hashCode();
+            int percentage = Math.abs(hash) % 100;
+            return percentage < percentageBased.getPercentage();
+        }
+
+        return false;
+    }
+
+    /**
+     * 从上下文中获取用户ID
+     */
+    private String getUserIdFromContext(GatewayContext context) {
+        // 尝试从常见头部获取用户ID
+        String userId = context.getRequest().headers().get("user-id");
+        if (userId != null) {
+            return userId;
+        }
+
+        userId = context.getRequest().headers().get("X-User-ID");
+        if (userId != null) {
+            return userId;
+        }
+
+        // 可以扩展从token、cookie等获取用户ID的逻辑
+        return null;
+    }
+
+    /**
+     * 获取客户端IP
+     */
+    private String getClientIp(GatewayContext context) {
+        String xForwardedFor = context.getRequest().headers().get("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+
+        String xRealIp = context.getRequest().headers().get("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isEmpty()) {
+            return xRealIp;
+        }
+
+        // 从ChannelHandlerContext获取远程地址
+        return context.getCtx().channel().remoteAddress().toString().replaceFirst("/", "");
+    }
+
+    /**
+     * 判断IP是否在指定范围内（简化实现）
+     */
+    private boolean isIpInRange(String ip, String range) {
+        // 简化实现，实际可以支持CIDR格式等
+        return ip.startsWith(range) || range.equals("*") || ip.equals(range);
+    }
+
+
+    /**
+     * 基于灰度发布策略选择实例
+     */
+    private GatewayProperties.Instance chooseInstanceWithGrayRelease(GatewayContext context,
+                                                                     GatewayProperties.RouteDefinition route,
+                                                                     GatewayProperties.GrayReleaseConfig grayReleaseConfig) {
+        try {
+            // 判断当前请求是否符合灰度条件
+            boolean isInGrayGroup = isInGrayGroup(context, grayReleaseConfig);
+
+            // 根据灰度条件筛选实例
+            List<GatewayProperties.Instance> candidateInstances;
+            if (isInGrayGroup) {
+                // 灰度用户访问灰度实例
+                candidateInstances = route.getInstances().stream()
+                        .filter(instance -> Boolean.TRUE.equals(instance.getGray()))
+                        .collect(java.util.stream.Collectors.toList());
+
+                log.debug("Gray user matched, routing to gray instances. Count: {}", candidateInstances.size());
+            } else {
+                // 普通用户访问普通实例
+                candidateInstances = route.getInstances().stream()
+                        .filter(instance -> !Boolean.TRUE.equals(instance.getGray()))
+                        .collect(java.util.stream.Collectors.toList());
+
+                log.debug("Normal user, routing to normal instances. Count: {}", candidateInstances.size());
+            }
+
+            // 如果筛选后没有可用实例，则回退到全部实例
+            if (candidateInstances.isEmpty()) {
+                log.warn("No candidate instances found for gray release, fallback to all instances");
+                candidateInstances = route.getInstances();
+            }
+
+            // 在候选实例中使用负载均衡选择
+            String loadBalancerType = route.getLoadBalancerType();
+            LoadBalancer loadBalancer = getLoadBalancer(loadBalancerType);
+            return loadBalancer.choose(candidateInstances, route.getId());
+
+        } catch (Exception e) {
+            log.error("Error in gray release instance selection, fallback to normal selection", e);
+            // 出现异常时回退到正常的选择逻辑
+            return chooseInstanceByLoadBalancer(route);
+        }
+    }
+
+    /**
+     * 获取负载均衡器
+     */
+    private LoadBalancer getLoadBalancer(String loadBalancerType) {
+        LoadBalancer loadBalancer = cachedLoadBalancerMap.get(loadBalancerType);
+        if(null == loadBalancer){
+            synchronized (this) {
+                if(null == cachedLoadBalancerMap.get(loadBalancerType)){
+                    loadBalancer = LoadBalancerTypeEnums.WEIGHTED_ROBIN.getKey().equals(loadBalancerType) ?
+                            weightedLoadBalancer : roundRobinLoadBalancer;
+                    cachedLoadBalancerMap.put(loadBalancerType, loadBalancer);
+                }else {
+                    loadBalancer = cachedLoadBalancerMap.get(loadBalancerType);
+                }
+            }
+        }
+        return loadBalancer;
+    }
+
+    /**
+     * 选择服务实例
+     */
+    private GatewayProperties.Instance chooseInstance(GatewayContext context,GatewayProperties.RouteDefinition route) {
+        // 获取灰度发布配置
+        GatewayProperties.GrayReleaseConfig grayReleaseConfig = route.getGrayReleaseConfig();
+
+        // 如果没有配置灰度发布，则使用原有逻辑
+        if (grayReleaseConfig == null || !grayReleaseConfig.isEnabled()) {
+            return chooseInstanceByLoadBalancer(route);
+        }
+
+        // 根据灰度策略选择实例
+        return chooseInstanceWithGrayRelease(context, route, grayReleaseConfig);
     }
 
     /**
