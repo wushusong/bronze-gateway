@@ -17,13 +17,11 @@ gateway:
       path: /wss-test-gw/ # 服务访问路径，注意，前后都要斜杠，不能有*号
       instances: # 服务实例
         - serviceId: wss-test-gw-1 # 服务实例名称，同一个服务下，不同实例，serviceId要求唯一
-          url: http://192.168.1.239:8089
-          weight: 1
-          healthy: true
+          url: http://192.168.1.239:8089 # 服务地址，到端口一层即可
+          weight: 1 # 权重，目前系统默认轮询策略
 #        - serviceId: wss-test-gw-2 # 模拟服务2 该服务百分百失败
 #          url: http://192.168.1.111:8089
 #          weight: 1
-#          healthy: true
     - id: jm-cloud-gw
       path: /jm-cloud-gw/ # 注意，前后都要斜杠，不能有*号
       loadBalancerType: roundRobinLoadBalancer # 轮询策略
@@ -31,11 +29,9 @@ gateway:
         - serviceId: jm-cloud-gw-1 # 模拟服务2 该服务是正常服务
           url: http://192.168.1.240:23500
           weight: 1
-          healthy: true
         - serviceId: jm-cloud-gw-2 # 模拟服务2 该服务百分百失败
           url: http://192.168.1.111:23500
           weight: 1
-          healthy: true
           gray: true # 灰度发布实例 当满足灰度条件的请求，都会进入该服务，否则跳转到正常服务 如下面配置的是基于请求头的灰度，当请求头有wss，则进入该服务
       # 灰度发布配置
       grayReleaseConfig:

@@ -2,11 +2,11 @@
 <p align="center">
 	<img alt="logo" src="doc/logo_1.png" width="174" height="172">
 </p>
-<h1 align="center" style="margin: 30px 0 30px; font-weight: bold;">bronze-gateway v1.0.4</h1>
+<h1 align="center" style="margin: 30px 0 30px; font-weight: bold;">bronze-gateway v1.0.5</h1>
 <h4 align="center">基于netty实现的轻量级、高性能网关！</h4>
 <p align="center">
 
-  <img alt="Version" src="https://img.shields.io/badge/version-1.0.4-blue.svg?cacheSeconds=2592000" />
+  <img alt="Version" src="https://img.shields.io/badge/version-1.0.5-blue.svg?cacheSeconds=2592000" />
   <a href="https://nas2.wushusong.cn/note/" target="_blank">
     <img alt="Documentation" src="https://img.shields.io/badge/documentation-yes-brightgreen.svg" />
   </a>
@@ -39,7 +39,7 @@ springboot版本要求：2.7.18及以上
         <dependency>
             <groupId>io.github.wushusong</groupId>
             <artifactId>bronze-gateway-core</artifactId>
-            <version>1.0.4</version>
+            <version>1.0.5</version>
         </dependency>
 ````
 
@@ -51,29 +51,38 @@ gateway:
   backendResponseTimeoutMs: 6000 # 后端响应超时时间
   clientWriteTimeoutMs: 6000 # 客户端写入超时时间
   connectTimeoutMs: 6000 # 连接超时时间
-  maxConnectionsPerHost: 64 # 每个主机的最大并发连接数（如果没有配置，使用合理默认值）
-  maxPendingAcquires: 10000 # 每个主机最大等待连接数（如果没有配置，使用合理默认值）
+  maxConnectionsPerHost: 2000 # 每个主机的最大并发连接数（如果没有配置，使用合理默认值）
+  maxPendingAcquires: 20000 # 每个主机最大等待连接数（如果没有配置，使用合理默认值）
   routes:
-    - id: user-service # 服务名称，每个服务唯一
-      path: /user/ # 服务访问路径，注意，前后都要斜杠，不能有*号
-      instances:
-        - serviceId: user-service-1 # 服务实例名称，同一个服务下，不同实例，serviceId要求唯一
-          url: http://localhost:8081 # 服务地址，到端口一层即可
+    - id: wss-test-gw # 服务名称，每个服务唯一
+      path: /wss-test-gw/ # 服务访问路径，注意，前后都要斜杠，不能有*号
+      instances: # 服务实例
+        - serviceId: wss-test-gw-1 # 服务实例名称，同一个服务下，不同实例，serviceId要求唯一
+          url: http://192.168.1.239:8089 # 服务地址，到端口一层即可
           weight: 1 # 权重，目前系统默认轮询策略
-          healthy: true # 服务健康状态，预留，目前默认为true
+#        - serviceId: wss-test-gw-2 # 模拟服务2 该服务百分百失败
+#          url: http://192.168.1.111:8089
+#          weight: 1
     - id: jm-cloud-gw
       path: /jm-cloud-gw/ # 注意，前后都要斜杠，不能有*号
-      loadBalancerType: weightedLoadBalancer # 负载均衡类型 roundRobinLoadBalancer轮询 / WeightedLoadBalancer权重
+      loadBalancerType: roundRobinLoadBalancer # 轮询策略
       instances:
-        - serviceId: jm-cloud-gw-1
+        - serviceId: jm-cloud-gw-1 # 模拟服务2 该服务是正常服务
           url: http://192.168.1.240:23500
           weight: 1
-          healthy: true
-        - serviceId: jm-cloud-gw-2
+        - serviceId: jm-cloud-gw-2 # 模拟服务2 该服务百分百失败
           url: http://192.168.1.111:23500
           weight: 1
-          healthy: true
-#  filters:
+          gray: true # 灰度发布实例 当满足灰度条件的请求，都会进入该服务，否则跳转到正常服务 如下面配置的是基于请求头的灰度，当请求头有wss，则进入该服务
+      # 灰度发布配置
+      grayReleaseConfig:
+        enabled: true
+        headerBased: # 基于请求头
+          headerName: VERSION # 请求头名称
+          headerValues: # 请求头值
+            - "wss"
+
+  filters:
 #    - name: AuthFilter  # 与@Component("AuthFilter")匹配
 #      order: -100
 #    - name: RateLimitFilter  # 与@Component("RateLimitFilter")匹配
@@ -90,7 +99,6 @@ gateway:
     permittedNumberOfCallsInHalfOpenState: 5 # 半开状态允许的调用次数
     minimumNumberOfCalls: 2 # 计算失败率所需的最小调用次数
     slidingWindowSize: 5 # 滑动窗口大小
-
 ````
 
 # 熔断
