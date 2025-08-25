@@ -46,7 +46,7 @@
         <dependency>
             <groupId>io.github.wushusong</groupId>
             <artifactId>bronze-gateway-core</artifactId>
-            <version>1.0.5</version>
+            <version>1.0.6</version>
         </dependency>
 
         <!-- Guava (用于RateLimiter) -->

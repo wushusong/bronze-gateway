@@ -2,11 +2,11 @@
 <p align="center">
 	<img alt="logo" src="doc/logo_1.png" width="174" height="172">
 </p>
-<h1 align="center" style="margin: 30px 0 30px; font-weight: bold;">bronze-gateway v1.0.5</h1>
+<h1 align="center" style="margin: 30px 0 30px; font-weight: bold;">bronze-gateway v1.0.6</h1>
 <h4 align="center">基于netty实现的轻量级、高性能网关！</h4>
 <p align="center">
 
-  <img alt="Version" src="https://img.shields.io/badge/version-1.0.5-blue.svg?cacheSeconds=2592000" />
+  <img alt="Version" src="https://img.shields.io/badge/version-1.0.6-blue.svg?cacheSeconds=2592000" />
   <a href="https://nas2.wushusong.cn/note/" target="_blank">
     <img alt="Documentation" src="https://img.shields.io/badge/documentation-yes-brightgreen.svg" />
   </a>
@@ -39,7 +39,7 @@ springboot版本要求：2.7.18及以上
         <dependency>
             <groupId>io.github.wushusong</groupId>
             <artifactId>bronze-gateway-core</artifactId>
-            <version>1.0.5</version>
+            <version>1.0.6</version>
         </dependency>
 ````
 
