@@ -44,12 +44,8 @@ public class RoundRobinLoadBalancer implements LoadBalancer {
         AtomicInteger position = servicePositionMap.computeIfAbsent(serviceId, k -> new AtomicInteger(0));
 
         // 计算下一个位置，使用模运算确保在有效范围内
-        int nextPosition = position.getAndIncrement() % instanceCount;
-
-        // 处理负数情况（虽然理论上不会发生，但为了健壮性）
-        if (nextPosition < 0) {
-            nextPosition = Math.abs(nextPosition) % instanceCount;
-        }
+        // 使用Math.floorMod处理负数情况，确保结果在[0, instanceCount)范围内
+        int nextPosition = Math.floorMod(position.getAndIncrement(), instanceCount);
 
         return instances.get(nextPosition);
     }
