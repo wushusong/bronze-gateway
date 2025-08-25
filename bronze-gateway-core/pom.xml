@@ -48,7 +48,7 @@
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-context</artifactId>
-            <version>5.3.1</version>
+            <version>5.3.31</version>
         </dependency>
 
 
@@ -57,13 +57,6 @@
             <groupId>io.netty</groupId>
             <artifactId>netty-all</artifactId>
             <version>4.1.86.Final</version>
-        </dependency>
-
-        <!-- Guava (用于RateLimiter) -->
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>31.1-jre</version>
         </dependency>
 
         <!-- Lombok -->

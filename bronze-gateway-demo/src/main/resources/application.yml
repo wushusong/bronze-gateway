@@ -29,7 +29,10 @@ gateway:
         - serviceId: jm-cloud-gw-1 # 模拟服务2 该服务是正常服务
           url: http://192.168.1.240:23500
           weight: 1
-        - serviceId: jm-cloud-gw-2 # 模拟服务2 该服务百分百失败
+        - serviceId: jm-cloud-gw-2 # 模拟服务2 该服务是正常服务
+          url: http://192.168.1.240:23500
+          weight: 1
+        - serviceId: jm-cloud-gw-3 # 模拟服务2 该服务百分百失败
           url: http://192.168.1.111:23500
           weight: 1
           gray: true # 灰度发布实例 当满足灰度条件的请求，都会进入该服务，否则跳转到正常服务 如下面配置的是基于请求头的灰度，当请求头有wss，则进入该服务
@@ -44,10 +47,10 @@ gateway:
   filters:
 #    - name: AuthFilter  # 与@Component("AuthFilter")匹配
 #      order: -100
-#    - name: RateLimitFilter  # 与@Component("RateLimitFilter")匹配
-#      order: -90
-#      args:
-#        permitsPerSecond: "1000"
+    - name: RateLimitFilter  # 与@Component("RateLimitFilter")匹配
+      order: -90
+      args:
+        permitsPerSecond: "1000"
 
 #熔断配置
   resilience:

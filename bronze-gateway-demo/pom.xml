@@ -49,6 +49,13 @@
             <version>1.0.5</version>
         </dependency>
 
+        <!-- Guava (用于RateLimiter) -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>33.3.1-jre</version>
+        </dependency>
+
     </dependencies>
     <dependencyManagement>
         <dependencies>
